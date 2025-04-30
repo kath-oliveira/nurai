@@ -40,10 +40,13 @@ except ImportError as e:
 # ... etc.
 
 def get_url():
-    # Get URL from environment variable, fallback to alembic.ini (though env var is preferred)
-    url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    # Get URL STRICTLY from environment variable
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise ValueError("DATABASE_URL environment variable not set or empty. Cannot configure database.")
+
     # Heroku uses postgres:// but SQLAlchemy needs postgresql://
-    if url and url.startswith("postgres://"):
+    if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return url
 
@@ -59,7 +62,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = get_url()
+    url = get_url() # Will raise ValueError if DATABASE_URL is not set
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -77,10 +80,8 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # Get the actual database URL
+    # Get the actual database URL (will raise ValueError if not set)
     db_url = get_url()
-    if not db_url:
-        raise ValueError("Database URL not configured. Set DATABASE_URL environment variable.")
 
     # Create engine configuration dictionary
     engine_config = {
