@@ -123,9 +123,9 @@ try:
 except ImportError as e:
     app.logger.error(f"Erro ao importar módulos de processamento: {e}")
     class QuestionnaireTemplate:
-        @staticmethod
-        def get_template():
-            return {"sections": []}
+    @staticmethod
+    def get_template():
+        return {"sections": []}
     class DocumentProcessor: def __init__(self, *args): pass
                          def process_document(self, *args): return None
     class FinancialDiagnostic: def generate_diagnostic(self, *args): return None
