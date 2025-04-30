@@ -1,7 +1,7 @@
 """
-Configuração do aplicativo Flask para implantação no Heroku.
+Configuração do aplicativo Flask para implantação no Render.com (Modo Demo).
 Este módulo contém as configurações necessárias para executar o aplicativo
-de automação financeira no ambiente de produção do Heroku.
+de automação financeira no ambiente de produção do Render.com.
 """
 
 import os
@@ -22,10 +22,10 @@ from security_measures import SecurityManager, configure_heroku_security, csrf_p
 # Configuração do aplicativo
 app = Flask(__name__)
 
-# Configurar o aplicativo para funcionar atrás de proxies (necessário no Heroku)
+# Configurar o aplicativo para funcionar atrás de proxies (Render usa proxies)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-# Configurações do banco de dados PostgreSQL (Heroku) - Mantido para outras partes da app
+# Configurações do banco de dados PostgreSQL (Render) - Mantido para estrutura
 database_url = os.environ.get("DATABASE_URL", "")
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -45,18 +45,12 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# --- REMOVIDO: Inicialização automática do banco de dados ---
-# def initialize_database():
-#     ...
-# initialize_database()
-# --- FIM REMOÇÃO ---
-
 # Inicializar gerenciador de segurança
 security_manager = SecurityManager(app)
 app.security_manager = security_manager  # Tornar acessível globalmente
 
-# Aplicar configurações de segurança específicas para o Heroku
-configure_heroku_security(app)
+# Aplicar configurações de segurança (pode precisar de ajustes para Render)
+# configure_heroku_security(app) # Comentado - revisar se necessário para Render
 
 # Configurar logging
 if not app.debug:
@@ -122,13 +116,27 @@ try:
     from document_processor import DocumentProcessor, FinancialDiagnostic, ValuationCalculator
 except ImportError as e:
     app.logger.error(f"Erro ao importar módulos de processamento: {e}")
-    class QuestionnaireTemplate: @staticmethod
-                           def get_template(): return {"sections": []}
-    class DocumentProcessor: def __init__(self, *args): pass
-                         def process_document(self, *args): return None
-    class FinancialDiagnostic: def generate_diagnostic(self, *args): return None
-    class ValuationCalculator: def calculate_valuation(self, *args): return None
+    # Definir classes dummy para evitar erros de inicialização (SINTAXE CORRIGIDA)
+    class QuestionnaireTemplate:
+        @staticmethod
+        def get_template():
+            return {"sections": []}
 
+    class DocumentProcessor:
+        def __init__(self, *args, **kwargs):
+            pass
+        def process_document(self, *args, **kwargs):
+            return None
+
+    class FinancialDiagnostic:
+        def generate_diagnostic(self, *args, **kwargs):
+            return None
+
+    class ValuationCalculator:
+        def calculate_valuation(self, *args, **kwargs):
+            return None
+
+# Inicializar classes de processamento (usando as reais ou as dummy)
 document_processor = DocumentProcessor(app.config["UPLOAD_FOLDER"])
 financial_diagnostic = FinancialDiagnostic()
 valuation_calculator = ValuationCalculator()
@@ -309,5 +317,8 @@ def internal_server_error(e):
 
 # Ponto de entrada para execução
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    # Render define a porta pela variável PORT
+    port = int(os.environ.get("PORT", 5000))
+    # debug=False é importante para produção no Render
+    app.run(debug=False, host="0.0.0.0", port=port)
 
