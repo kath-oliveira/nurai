@@ -26,8 +26,13 @@ if config.config_file_name is not None:
 # You might need to adjust the import path based on your project structure
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from app import db # Import db instance from your app
-target_metadata = db.metadata
+try:
+    from app import db # Import db instance from your app
+    target_metadata = db.metadata
+except ImportError as e:
+    print(f"Error importing app or db: {e}")
+    print("Ensure your Flask app and SQLAlchemy db instance are correctly defined and importable.")
+    target_metadata = None
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -35,7 +40,12 @@ target_metadata = db.metadata
 # ... etc.
 
 def get_url():
-    return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    # Get URL from environment variable, fallback to alembic.ini (though env var is preferred)
+    url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    # Heroku uses postgres:// but SQLAlchemy needs postgresql://
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -67,10 +77,18 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = get_url()
+    # Get the actual database URL
+    db_url = get_url()
+    if not db_url:
+        raise ValueError("Database URL not configured. Set DATABASE_URL environment variable.")
+
+    # Create engine configuration dictionary
+    engine_config = {
+        "sqlalchemy.url": db_url
+    }
+
     connectable = engine_from_config(
-        configuration,
+        engine_config, # Use the dictionary with the corrected URL
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
@@ -83,8 +101,12 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
-if context.is_offline_mode():
-    run_migrations_offline()
+# Ensure target_metadata is available before running migrations
+if target_metadata is None:
+    print("Target metadata not loaded. Cannot run migrations.")
 else:
-    run_migrations_online()
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()
 
