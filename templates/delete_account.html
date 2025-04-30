@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Conta - CFO as a Service{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">Excluir Conta Permanentemente</div>
+            <div class="card-body">
+                <p class="text-danger"><strong>Atenção:</strong> Esta ação é irreversível. Todos os seus dados, incluindo informações de empresas, questionários e documentos, serão permanentemente excluídos.</p>
+                <p>Para confirmar a exclusão da sua conta, digite sua senha atual:</p>
+                <form method="POST" action="{{ url_for('delete_account') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Senha Atual</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Tem certeza ABSOLUTA que deseja excluir sua conta e todos os seus dados? Esta ação não pode ser desfeita.');">Excluir Minha Conta Permanentemente</button>
+                </form>
+                <div class="mt-3 text-center">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar e Voltar ao Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

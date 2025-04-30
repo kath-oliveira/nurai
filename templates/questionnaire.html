@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Questionário Financeiro - {{ company.name }} - CFO as a Service{% endblock %}
+
+{% block head_extra %}
+<style>
+    .nav-tabs .nav-link.active {
+        font-weight: bold;
+        background-color: #e9ecef;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    .tab-pane {
+        padding-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mt-4">Questionário Financeiro - {{ company.name }}</h1>
+<p>Responda às perguntas abaixo para nos ajudar a entender melhor a situação financeira da sua empresa.</p>
+
+<form method="POST" action="{{ url_for('questionnaire', company_id=company.id) }}" id="questionnaireForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+    <ul class="nav nav-tabs" id="questionnaireTabs" role="tablist">
+        {% for section in template.sections %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if loop.first %}active{% endif %}" id="{{ section.id }}-tab" data-bs-toggle="tab" data-bs-target="#{{ section.id }}" type="button" role="tab" aria-controls="{{ section.id }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ section.title }}</button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="tab-content card card-body mt-0 border-top-0 rounded-0 rounded-bottom" id="questionnaireTabContent">
+        {% for section in template.sections %}
+        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ section.id }}" role="tabpanel" aria-labelledby="{{ section.id }}-tab">
+            <h5 class="mb-3">{{ section.title }}</h5>
+            {% for question in section.questions %}
+            <div class="mb-3">
+                <label for="{{ section.id }}_{{ question.id }}" class="form-label">{{ question.label }}</label>
+                {% if question.type == 'textarea' %}
+                <textarea class="form-control" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}" rows="3">{{ questionnaire.responses[section.id][question.id] if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] else '' }}</textarea>
+                {% elif question.type == 'select' %}
+                <select class="form-select" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}">
+                    <option value="">Selecione...</option>
+                    {% for option in question.options %}
+                    <option value="{{ option }}" {% if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] and questionnaire.responses[section.id][question.id] == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <input type="{{ question.type }}" class="form-control" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}" value="{{ questionnaire.responses[section.id][question.id] if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] else '' }}">
+                {% endif %}
+                {% if question.tooltip %}
+                <small class="form-text text-muted">{{ question.tooltip }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Salvar Questionário</button>
+        <a href="{{ url_for('company_detail', company_id=company.id) }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // Keep the current tab active after form submission/page reload (if needed)
+    document.addEventListener('DOMContentLoaded', function() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#questionnaireTabs button'))
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl)
+
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault()
+                tabTrigger.show()
+            })
+        })
+
+        // Optional: Store the last active tab in local storage
+        var lastTab = localStorage.getItem('lastActiveQuestionnaireTab');
+        if (lastTab) {
+            var lastTabEl = document.querySelector('#questionnaireTabs button[data-bs-target="' + lastTab + '"]');
+            if (lastTabEl) {
+                var tab = new bootstrap.Tab(lastTabEl);
+                tab.show();
+            }
+        }
+
+        // Save the last active tab on click
+        var tabButtons = document.querySelectorAll('#questionnaireTabs button');
+        tabButtons.forEach(function(button) {
+            button.addEventListener('shown.bs.tab', function(event) {
+                localStorage.setItem('lastActiveQuestionnaireTab', event.target.getAttribute('data-bs-target'));
+            });
+        });
+    });
+</script>
+{% endblock %}
+

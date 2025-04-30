@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Adicionar Empresa - CFO as a Service{% endblock %}
+
+{% block content %}
+<h1 class="mt-4">Adicionar Nova Empresa</h1>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_company') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            <div class="mb-3">
+                <label for="name" class="form-label">Nome da Empresa <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="cnpj" class="form-label">CNPJ</label>
+                <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="XX.XXX.XXX/XXXX-XX">
+            </div>
+            <div class="mb-3">
+                <label for="segment" class="form-label">Segmento de Atuação</label>
+                <input type="text" class="form-control" id="segment" name="segment">
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Descrição</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Empresa</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

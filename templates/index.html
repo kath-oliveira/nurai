@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Página Inicial - CFO as a Service{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 mb-4">Bem-vindo ao CFO as a Service</h1>
+            <p class="lead mb-4">Sua solução completa para diagnóstico financeiro e valuation de PMEs.</p>
+            <hr class="my-4">
+            <p>Gerencie suas finanças com inteligência, tome decisões estratégicas baseadas em dados e impulsione o crescimento do seu negócio.</p>
+            {% if not session.user_id %}
+            <a class="btn btn-primary btn-lg me-2" href="{{ url_for('register') }}" role="button">Comece Agora</a>
+            <a class="btn btn-secondary btn-lg" href="{{ url_for('login') }}" role="button">Fazer Login</a>
+            {% else %}
+            <a class="btn btn-success btn-lg" href="{{ url_for('dashboard') }}" role="button">Acessar Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

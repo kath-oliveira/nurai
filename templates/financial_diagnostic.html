@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Diagnóstico Financeiro - {{ company.name }} - CFO as a Service{% endblock %}
+
+{% block head_extra %}
+<!-- Chart.js for graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .indicator-card {
+        border-left: 5px solid #0d6efd; /* Blue */
+        margin-bottom: 1rem;
+    }
+    .indicator-card.attention {
+        border-left-color: #ffc107; /* Yellow */
+    }
+    .indicator-card.critical {
+        border-left-color: #dc3545; /* Red */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mt-4">Diagnóstico Financeiro - {{ company.name }}</h1>
+
+{% if diagnostic %}
+    <div class="alert alert-info mt-3">
+        <strong>Status do Diagnóstico:</strong> {{ diagnostic.status }}
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">Resumo da Análise</div>
+        <div class="card-body">
+            <p>{{ diagnostic.summary }}</p>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">Recomendações</div>
+        <div class="card-body">
+            <ul>
+                {% for recommendation in diagnostic.recommendations %}
+                <li>{{ recommendation }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <h2 class="mt-4">Indicadores Chave</h2>
+    <div class="row">
+        {% for key, value in diagnostic.indicators.items() %}
+        <div class="col-md-6 col-lg-3">
+            <div class="card indicator-card {% if 'Atenção' in value|string %}attention{% elif 'Crítico' in value|string %}critical{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title text-capitalize">{{ key.replace('_', ' ') }}</h5>
+                    <p class="card-text">{{ value }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Placeholder for Charts -->
+    <h2 class="mt-4">Visualizações Gráficas (Exemplo)</h2>
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Distribuição de Despesas</div>
+                <div class="card-body">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Evolução da Receita</div>
+                <div class="card-body">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <div class="alert alert-warning mt-4">
+        O diagnóstico financeiro ainda não está disponível. Certifique-se de que o questionário foi preenchido e/ou documentos relevantes foram enviados e processados.
+    </div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="{{ url_for('company_detail', company_id=company.id) }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Voltar para Detalhes da Empresa</a>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+{% if diagnostic %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Example Expense Chart (Pie)
+    const ctxExpense = document.getElementById('expenseChart')?.getContext('2d');
+    if (ctxExpense) {
+        new Chart(ctxExpense, {
+            type: 'pie',
+            data: {
+                labels: ['Operacional', 'Financeira', 'Tributária', 'Fornecedores', 'Outras'],
+                datasets: [{
+                    label: 'Distribuição de Despesas',
+                    data: [50, 10, 15, 20, 5], // Example data
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed + '%';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Example Revenue Chart (Line)
+    const ctxRevenue = document.getElementById('revenueChart')?.getContext('2d');
+    if (ctxRevenue) {
+        new Chart(ctxRevenue, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'], // Example labels
+                datasets: [{
+                    label: 'Receita Mensal (R$)',
+                    data: [12000, 19000, 15000, 21000, 18000, 25000], // Example data
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
+

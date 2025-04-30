@@ -1,0 +1,748 @@
+"""
+Configuração do aplicativo Flask para implantação no Heroku.
+Este módulo contém as configurações necessárias para executar o aplicativo
+de automação financeira no ambiente de produção do Heroku.
+"""
+
+import os
+import logging
+import json
+import uuid
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta
+
+# Importar módulos de segurança
+from security_measures import SecurityManager, configure_heroku_security, csrf_protected
+
+# Configuração do aplicativo
+app = Flask(__name__)
+
+# Configurar o aplicativo para funcionar atrás de proxies (necessário no Heroku)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+# Configurações do banco de dados PostgreSQL (Heroku)
+database_url = os.environ.get("DATABASE_URL", "")
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url or "sqlite:///local_dev.db" # Fallback para SQLite localmente
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "uma-chave-secreta-muito-forte-padrao") # Chave secreta
+
+# Configurações de upload de arquivos
+app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max upload
+app.config["ALLOWED_EXTENSIONS"] = {"pdf", "png", "jpg", "jpeg", "xls", "xlsx", "csv", "txt"}
+
+# Garantir que a pasta de uploads exista
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+# Inicializar banco de dados
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Inicializar gerenciador de segurança
+security_manager = SecurityManager(app)
+app.security_manager = security_manager  # Tornar acessível globalmente
+
+# Aplicar configurações de segurança específicas para o Heroku
+configure_heroku_security(app)
+
+# Configurar logging
+if not app.debug:
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    app.logger.addHandler(stream_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info("Aplicativo CFO as a Service iniciado")
+
+# Modelos de banco de dados
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    companies = db.relationship("Company", backref="user", lazy=True, cascade="all, delete-orphan")
+
+class Company(db.Model):
+    __tablename__ = "companies"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    cnpj = db.Column(db.String(18), nullable=True)
+    segment = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    documents = db.relationship("Document", backref="company", lazy=True, cascade="all, delete-orphan")
+    questionnaires = db.relationship("Questionnaire", backref="company", lazy=True, cascade="all, delete-orphan")
+
+class Document(db.Model):
+    __tablename__ = "documents"
+
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_filename = db.Column(db.String(255), nullable=False)
+    document_type = db.Column(db.String(50), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    extracted_data = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Pendente") # Status inicial
+    upload_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class Questionnaire(db.Model):
+    __tablename__ = "questionnaires"
+
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
+    responses = db.Column(db.Text, nullable=False)  # JSON serializado
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Funções auxiliares
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
+
+# Importar módulos de processamento
+# Certifique-se que estes arquivos existem no mesmo diretório
+try:
+    from questionnaire_storage import QuestionnaireTemplate
+    from document_processor import DocumentProcessor, FinancialDiagnostic, ValuationCalculator
+except ImportError as e:
+    app.logger.error(f"Erro ao importar módulos de processamento: {e}")
+    # Definir classes dummy para evitar erros de inicialização
+    class QuestionnaireTemplate:
+        @staticmethod
+        def get_template():
+            return {"sections": []}
+
+    class DocumentProcessor:
+        def __init__(self, *args):
+            pass
+        def process_document(self, *args):
+            return None
+
+    class FinancialDiagnostic:
+        def generate_diagnostic(self, *args):
+            return None
+
+    class ValuationCalculator:
+        def calculate_valuation(self, *args):
+            return None
+
+# Inicializar classes de processamento
+document_processor = DocumentProcessor(app.config["UPLOAD_FOLDER"])
+financial_diagnostic = FinancialDiagnostic()
+valuation_calculator = ValuationCalculator()
+
+# Decorator para verificar se o usuário está logado
+def login_required(f):
+    from functools import wraps
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Por favor, faça login para acessar esta página.", "warning")
+            return redirect(url_for("login"))
+        # Verificar se o usuário ainda existe no banco de dados
+        user = User.query.get(session["user_id"])
+        if not user:
+            session.clear()
+            flash("Sua sessão expirou ou sua conta foi removida. Faça login novamente.", "warning")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+# Rotas para autenticação
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        # Sanitizar entrada
+        email = security_manager.sanitize_input(email)
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and security_manager.check_password(user.password, password):
+            session["user_id"] = user.id
+            session["user_name"] = user.name
+            session["user_email"] = user.email
+            session.permanent = True # Manter sessão
+            app.permanent_session_lifetime = timedelta(days=7) # Duração da sessão
+
+            # Gerar token JWT para API (se necessário)
+            # jwt_token = security_manager.generate_jwt_token(user.id)
+
+            # Definir cookie seguro com o token JWT (se necessário)
+            response = redirect(url_for("dashboard"))
+            # response.set_cookie(
+            #     "jwt_token",
+            #     jwt_token,
+            #     httponly=True,
+            #     secure=not app.debug, # Secure apenas em produção
+            #     samesite="Lax",
+            #     max_age=int(app.permanent_session_lifetime.total_seconds()),
+            # )
+
+            flash("Login realizado com sucesso!", "success")
+            return response
+        else:
+            # Implementar rate limiting aqui se necessário
+            flash("Email ou senha incorretos. Tente novamente.", "danger")
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("login.html", csrf_token=csrf_token)
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("register"))
+
+        name = request.form.get("name")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        # Sanitizar entrada
+        name = security_manager.sanitize_input(name)
+        email = security_manager.sanitize_input(email)
+
+        # Validações básicas
+        if not name or not email or not password:
+            flash("Todos os campos são obrigatórios.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("register.html", csrf_token=csrf_token, name=name, email=email)
+
+        if password != confirm_password:
+            flash("As senhas não coincidem.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("register.html", csrf_token=csrf_token, name=name, email=email)
+
+        # Validação de senha forte (exemplo)
+        if len(password) < 8:
+             flash("A senha deve ter pelo menos 8 caracteres.", "danger")
+             csrf_token = security_manager.generate_csrf_token()
+             return render_template("register.html", csrf_token=csrf_token, name=name, email=email)
+
+        # Verificar se o email já está em uso
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash("Este email já está em uso. Tente outro.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("register.html", csrf_token=csrf_token, name=name, email=email)
+
+        # Criar novo usuário
+        hashed_password = security_manager.hash_password(password)
+
+        new_user = User(name=name, email=email, password=hashed_password)
+
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            flash("Cadastro realizado com sucesso! Faça login para continuar.", "success")
+            return redirect(url_for("login"))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao registrar usuário: {e}")
+            flash("Ocorreu um erro ao tentar registrar. Tente novamente mais tarde.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("register.html", csrf_token=csrf_token, name=name, email=email)
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("register.html", csrf_token=csrf_token)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+
+    # Remover cookie JWT (se estiver usando)
+    response = redirect(url_for("login"))
+    # response.delete_cookie("jwt_token")
+
+    flash("Você saiu do sistema.", "info")
+    return response
+
+@app.route("/forgot-password", methods=["GET", "POST"], endpoint="forgot_password")
+def forgot_password():
+    if request.method == "POST":
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("forgot_password"))
+
+        email = request.form.get("email")
+
+        # Sanitizar entrada
+        email = security_manager.sanitize_input(email)
+
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            # Gerar token de recuperação
+            reset_token = str(uuid.uuid4())
+            expiration = datetime.utcnow() + timedelta(hours=1)
+
+            # Atualizar usuário com token
+            user.reset_token = reset_token
+            user.reset_token_expiry = expiration
+            try:
+                db.session.commit()
+                # Em um sistema real, enviaríamos um email com o link de recuperação
+                # Ex: send_recovery_email(user.email, reset_token)
+                app.logger.info(f"Token de recuperação gerado para {email}: {reset_token}")
+                flash(f"Um link de recuperação foi enviado para seu email (se ele estiver cadastrado).", "info")
+                return redirect(url_for("login"))
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Erro ao salvar token de recuperação para {email}: {e}")
+                flash("Ocorreu um erro ao processar sua solicitação. Tente novamente.", "danger")
+        else:
+            # Não informar se o email existe ou não por segurança
+            flash("Se o email estiver cadastrado, um link de recuperação será enviado.", "info")
+            app.logger.warning(f"Tentativa de recuperação de senha para email não cadastrado: {email}")
+            return redirect(url_for("login")) # Redireciona mesmo se não encontrar para não vazar informação
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("forgot_password.html", csrf_token=csrf_token)
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"], endpoint="reset_password")
+def reset_password(token):
+    # Verificar se o token é válido
+    user = User.query.filter(
+        User.reset_token == token, User.reset_token_expiry > datetime.utcnow()
+    ).first()
+
+    if not user:
+        flash("Link de recuperação inválido ou expirado.", "danger")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("reset_password", token=token))
+
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if not password or password != confirm_password:
+            flash("As senhas não coincidem.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("reset_password.html", token=token, csrf_token=csrf_token)
+
+        # Validação de senha forte (exemplo)
+        if len(password) < 8:
+             flash("A senha deve ter pelo menos 8 caracteres.", "danger")
+             csrf_token = security_manager.generate_csrf_token()
+             return render_template("reset_password.html", token=token, csrf_token=csrf_token)
+
+        # Atualizar senha
+        hashed_password = security_manager.hash_password(password)
+
+        user.password = hashed_password
+        user.reset_token = None
+        user.reset_token_expiry = None
+        try:
+            db.session.commit()
+            flash("Senha atualizada com sucesso! Faça login para continuar.", "success")
+            return redirect(url_for("login"))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao resetar senha para {user.email}: {e}")
+            flash("Ocorreu um erro ao atualizar sua senha. Tente novamente.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("reset_password.html", token=token, csrf_token=csrf_token)
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("reset_password.html", token=token, csrf_token=csrf_token)
+
+@app.route("/delete-account", methods=["GET", "POST"])
+@login_required
+@csrf_protected
+def delete_account():
+    if request.method == "POST":
+        password = request.form.get("password")
+
+        # Verificar senha
+        user = User.query.get(session["user_id"])
+
+        if user and security_manager.check_password(user.password, password):
+            try:
+                # Excluir usuário (cascade delete configurado nos relacionamentos)
+                db.session.delete(user)
+                db.session.commit()
+
+                # Limpar sessão
+                session.clear()
+
+                # Remover cookie JWT (se estiver usando)
+                response = redirect(url_for("login"))
+                # response.delete_cookie("jwt_token")
+
+                flash("Sua conta foi excluída com sucesso.", "info")
+                return response
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Erro ao excluir conta {user.email}: {e}")
+                flash("Ocorreu um erro ao tentar excluir sua conta. Tente novamente.", "danger")
+        else:
+            flash("Senha incorreta. Tente novamente.", "danger")
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("delete_account.html", csrf_token=csrf_token)
+
+# Rotas para dashboard e empresas
+@app.route("/")
+def index():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+    return render_template("index.html")
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    # Buscar empresas do usuário
+    try:
+        companies = Company.query.filter_by(user_id=session["user_id"]).order_by(Company.name).all()
+    except Exception as e:
+        app.logger.error(f"Erro ao buscar empresas para usuário {session['user_id']}: {e}")
+        flash("Erro ao carregar suas empresas. Tente atualizar a página.", "danger")
+        companies = []
+
+    return render_template("dashboard.html", companies=companies)
+
+@app.route("/company/add", methods=["GET", "POST"])
+@login_required
+@csrf_protected
+def add_company():
+    if request.method == "POST":
+        name = request.form.get("name")
+        cnpj = request.form.get("cnpj")
+        segment = request.form.get("segment")
+        description = request.form.get("description")
+
+        # Sanitizar entrada
+        name = security_manager.sanitize_input(name)
+        cnpj = security_manager.sanitize_input(cnpj)
+        segment = security_manager.sanitize_input(segment)
+        description = security_manager.sanitize_input(description)
+
+        if not name:
+            flash("O nome da empresa é obrigatório.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("add_company.html", csrf_token=csrf_token, name=name, cnpj=cnpj, segment=segment, description=description)
+
+        # Criar nova empresa
+        new_company = Company(
+            user_id=session["user_id"],
+            name=name,
+            cnpj=cnpj,
+            segment=segment,
+            description=description,
+        )
+
+        try:
+            db.session.add(new_company)
+            db.session.commit()
+            flash("Empresa adicionada com sucesso!", "success")
+            return redirect(url_for("dashboard"))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao adicionar empresa para usuário {session['user_id']}: {e}")
+            flash("Ocorreu um erro ao adicionar a empresa. Tente novamente.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("add_company.html", csrf_token=csrf_token, name=name, cnpj=cnpj, segment=segment, description=description)
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("add_company.html", csrf_token=csrf_token)
+
+@app.route("/company/<int:company_id>")
+@login_required
+def company_detail(company_id):
+    # Buscar empresa e verificar permissão
+    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+
+    # Buscar documentos e questionários associados
+    try:
+        documents = Document.query.filter_by(company_id=company_id).order_by(Document.upload_date.desc()).all()
+        questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    except Exception as e:
+        app.logger.error(f"Erro ao buscar detalhes da empresa {company_id}: {e}")
+        flash("Erro ao carregar detalhes da empresa.", "danger")
+        documents = []
+        questionnaire = None
+
+    return render_template("company_detail.html", company=company, documents=documents, questionnaire=questionnaire)
+
+# Rotas para Questionário
+@app.route("/company/<int:company_id>/questionnaire", methods=["GET", "POST"])
+@login_required
+@csrf_protected
+def questionnaire(company_id):
+    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+    template = QuestionnaireTemplate.get_template()
+    existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    responses = json.loads(existing_questionnaire.responses) if existing_questionnaire else {}
+
+    if request.method == "POST":
+        form_data = request.form.to_dict()
+        # Remover token CSRF dos dados a serem salvos
+        form_data.pop('csrf_token', None)
+
+        # Sanitizar todas as respostas
+        sanitized_responses = {key: security_manager.sanitize_input(value) for key, value in form_data.items()}
+
+        try:
+            if existing_questionnaire:
+                existing_questionnaire.responses = json.dumps(sanitized_responses)
+                existing_questionnaire.updated_at = datetime.utcnow()
+            else:
+                new_questionnaire = Questionnaire(
+                    company_id=company_id,
+                    responses=json.dumps(sanitized_responses)
+                )
+                db.session.add(new_questionnaire)
+            db.session.commit()
+            flash("Questionário salvo com sucesso!", "success")
+            return redirect(url_for("company_detail", company_id=company_id))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao salvar questionário para empresa {company_id}: {e}")
+            flash("Ocorreu um erro ao salvar o questionário. Tente novamente.", "danger")
+            responses = sanitized_responses # Manter dados no formulário
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+
+    return render_template("questionnaire.html", company=company, template=template, responses=responses, csrf_token=csrf_token)
+
+# Rotas para Upload de Documentos
+@app.route("/company/<int:company_id>/upload", methods=["GET", "POST"])
+@login_required
+@csrf_protected
+def upload_document(company_id):
+    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+
+    if request.method == "POST":
+        if 'file' not in request.files:
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+
+        file = request.files['file']
+        document_type = request.form.get('document_type', 'Outro')
+
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+
+        if file and allowed_file(file.filename):
+            original_filename = secure_filename(file.filename)
+            # Criar um nome de arquivo único para armazenamento
+            file_ext = original_filename.rsplit('.', 1)[1].lower()
+            stored_filename = f"{uuid.uuid4()}.{file_ext}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], stored_filename)
+
+            try:
+                file.save(file_path)
+
+                new_document = Document(
+                    company_id=company_id,
+                    original_filename=original_filename,
+                    stored_filename=stored_filename,
+                    document_type=document_type,
+                    file_path=file_path,
+                    status="Processando" # Iniciar como processando
+                )
+                db.session.add(new_document)
+                db.session.commit()
+
+                # TODO: Iniciar processamento assíncrono do documento aqui (Celery, RQ, etc.)
+                # Ex: process_document_task.delay(new_document.id)
+                # Por enquanto, simulamos um processamento e marcamos como pendente
+                # Em uma implementação real, o processamento seria feito em background
+                # e atualizaria o status e extracted_data posteriormente.
+                new_document.status = "Pendente"
+                db.session.commit()
+
+                flash(f'Documento "{original_filename}" enviado com sucesso!', 'success')
+                return redirect(url_for('company_detail', company_id=company_id))
+
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Erro ao salvar upload para empresa {company_id}: {e}")
+                flash('Ocorreu um erro ao enviar o documento. Tente novamente.', 'danger')
+                # Tentar remover o arquivo se ele foi parcialmente salvo
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except OSError as remove_error:
+                        app.logger.error(f"Erro ao remover arquivo após falha no upload: {remove_error}")
+
+        else:
+            flash('Tipo de arquivo não permitido.', 'danger')
+
+    # Gerar token CSRF para o formulário
+    csrf_token = security_manager.generate_csrf_token()
+    # Buscar documentos existentes para exibir na página
+    documents = Document.query.filter_by(company_id=company_id).order_by(Document.upload_date.desc()).all()
+
+    return render_template("upload_document.html", company=company, documents=documents, csrf_token=csrf_token)
+
+@app.route('/uploads/<filename>')
+@login_required
+def uploaded_file(filename):
+    # Verificar se o usuário tem permissão para acessar este arquivo
+    # Buscando o documento pelo nome armazenado
+    doc = Document.query.filter_by(stored_filename=filename).first()
+    if not doc:
+        return "Arquivo não encontrado", 404
+
+    # Verificar se a empresa do documento pertence ao usuário logado
+    company = Company.query.filter_by(id=doc.company_id, user_id=session["user_id"]).first()
+    if not company:
+        return "Acesso não autorizado", 403
+
+    # Servir o arquivo de forma segura
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except FileNotFoundError:
+        app.logger.error(f"Arquivo não encontrado no diretório de uploads: {filename}")
+        return "Arquivo não encontrado no servidor", 404
+
+# Rotas para Diagnóstico e Valuation
+@app.route("/company/<int:company_id>/financial-diagnostic")
+@login_required
+def financial_diagnostic_view(company_id):
+    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Apenas processados
+
+    diagnostic_data = None
+    if questionnaire:
+        try:
+            # TODO: Implementar a lógica real de diagnóstico
+            # diagnostic_data = financial_diagnostic.generate_diagnostic(json.loads(questionnaire.responses), documents)
+            # Simulação:
+            diagnostic_data = {
+                "score": 75,
+                "summary": "A saúde financeira geral é boa, mas há pontos de atenção na liquidez e eficiência operacional.",
+                "recommendations": [
+                    "Revisar políticas de crédito para reduzir prazo de recebimento.",
+                    "Otimizar níveis de estoque para melhorar o giro.",
+                    "Buscar renegociação de prazos com fornecedores chave."
+                ],
+                "indicators": {
+                    "Rentabilidade": {"Margem Líquida": "15%", "ROE": "20%"},
+                    "Liquidez": {"Liquidez Corrente": "1.2", "Liquidez Seca": "0.8"},
+                    "Endividamento": {"Endividamento Geral": "40%", "Cobertura de Juros": "3.5x"},
+                    "Eficiência": {"Giro de Estoque": "60 dias", "Prazo Médio Recebimento": "45 dias"}
+                }
+            }
+        except Exception as e:
+            app.logger.error(f"Erro ao gerar diagnóstico para empresa {company_id}: {e}")
+            flash("Erro ao gerar o diagnóstico financeiro.", "danger")
+    else:
+        flash("Preencha o questionário financeiro para gerar o diagnóstico.", "info")
+
+    return render_template("financial_diagnostic.html", company=company, diagnostic_data=diagnostic_data)
+
+@app.route("/company/<int:company_id>/valuation")
+@login_required
+def valuation_view(company_id):
+    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    # Poderia usar documentos também
+
+    valuation_data = None
+    if questionnaire:
+        try:
+            # TODO: Implementar a lógica real de valuation
+            # valuation_data = valuation_calculator.calculate_valuation(json.loads(questionnaire.responses))
+            # Simulação:
+            valuation_data = {
+                "methods": {
+                    "Fluxo de Caixa Descontado (FCD)": "R$ 5.000.000",
+                    "Múltiplos de Mercado (EBITDA)": "R$ 4.500.000",
+                    "Valor Patrimonial": "R$ 3.000.000"
+                },
+                "estimated_range": "R$ 4.200.000 - R$ 5.300.000",
+                "sensitivity_analysis": {
+                    "Taxa de Desconto (+1%)": "- R$ 300.000",
+                    "Taxa de Crescimento (-1%)": "- R$ 400.000"
+                },
+                 "assumptions": [
+                    "Taxa de desconto (WACC): 15%",
+                    "Taxa de crescimento na perpetuidade: 3%",
+                    "Múltiplo EBITDA médio do setor: 6x"
+                 ]
+            }
+        except Exception as e:
+            app.logger.error(f"Erro ao calcular valuation para empresa {company_id}: {e}")
+            flash("Erro ao calcular o valuation.", "danger")
+    else:
+        flash("Preencha o questionário financeiro para calcular o valuation.", "info")
+
+    return render_template("valuation.html", company=company, valuation_data=valuation_data)
+
+# Tratamento de erros
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    # Logar o erro completo
+    app.logger.error(f"Erro interno do servidor: {e}", exc_info=True)
+    # Em produção, evitar mostrar detalhes do erro para o usuário
+    return render_template('500.html'), 500
+
+# Comando para criar tabelas (opcional, pode usar Flask-Migrate)
+@app.cli.command("create-db")
+def create_db():
+    """Cria as tabelas do banco de dados."""
+    try:
+        db.create_all()
+        print("Tabelas criadas com sucesso!")
+    except Exception as e:
+        print(f"Erro ao criar tabelas: {e}")
+
+if __name__ == '__main__':
+    # Usar 'waitress' ou 'gunicorn' em produção
+    port = int(os.environ.get('PORT', 5000))
+    # Executar com debug=False em produção
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_DEBUG', 'False') == 'True')
+
+

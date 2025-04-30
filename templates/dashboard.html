@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - CFO as a Service{% endblock %}
+
+{% block content %}
+<h1 class="mt-4">Dashboard</h1>
+<p>Bem-vindo(a), {{ session.user_name }}!</p>
+
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <a href="{{ url_for('add_company') }}" class="btn btn-success"><i class="fas fa-plus me-2"></i>Adicionar Nova Empresa</a>
+    </div>
+</div>
+
+<div class="row">
+    {% if companies %}
+        {% for company in companies %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ company.name }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ company.segment or 'Segmento não informado' }}</h6>
+                    <p class="card-text">{{ company.description or 'Sem descrição.' }}</p>
+                    <a href="{{ url_for('company_detail', company_id=company.id) }}" class="btn btn-primary">Ver Detalhes</a>
+                </div>
+                <div class="card-footer text-muted">
+                    Criada em: {{ company.created_at.strftime('%d/%m/%Y') }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <p>Você ainda não adicionou nenhuma empresa. <a href="{{ url_for('add_company') }}">Adicione sua primeira empresa</a> para começar.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
