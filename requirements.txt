@@ -7,6 +7,12 @@ Flask-Migrate==4.0.4
 psycopg2-binary==2.9.3
 PyJWT==2.3.0
 cryptography==36.0.1
-PyPDF2==3.0.1
-pandas==2.1.4
+PyPDF2==2.10.5
+pandas==1.3.3
+numpy==1.21.2
+python-dateutil==2.8.2
+Pillow==8.3.2
+Jinja2==3.1.2 # Compatível com Flask 2.3.x
+itsdangerous==2.1.2 # Compatível com Flask 2.3.x
+click==8.1.3 # Compatível com Flask 2.3.x
 
