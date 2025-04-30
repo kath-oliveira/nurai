@@ -14,6 +14,7 @@ from flask_migrate import Migrate
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
+from sqlalchemy import inspect # Import inspect
 
 # Importar módulos de segurança
 from security_measures import SecurityManager, configure_heroku_security, csrf_protected
@@ -43,6 +44,25 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 # Inicializar banco de dados
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+# --- Início: Inicialização automática do banco de dados ---
+def initialize_database():
+    with app.app_context():
+        inspector = inspect(db.engine)
+        # Verifica se a tabela 'users' existe como um indicativo
+        if not inspector.has_table("users"):
+            app.logger.info("Tabelas do banco de dados não encontradas. Criando tabelas...")
+            try:
+                db.create_all()
+                app.logger.info("Tabelas do banco de dados criadas com sucesso.")
+            except Exception as e:
+                app.logger.error(f"Erro ao criar tabelas do banco de dados: {e}")
+        else:
+            app.logger.info("Tabelas do banco de dados já existem.")
+
+# Chama a função de inicialização durante a configuração do app
+initialize_database()
+# --- Fim: Inicialização automática do banco de dados ---
 
 # Inicializar gerenciador de segurança
 security_manager = SecurityManager(app)
@@ -387,42 +407,39 @@ def reset_password(token):
 
 @app.route("/delete-account", methods=["GET", "POST"])
 @login_required
-@csrf_protected
 def delete_account():
     if request.method == "POST":
-        password = request.form.get("password")
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("delete_account"))
 
-        # Verificar senha
-        user = User.query.get(session["user_id"])
+        password = request.form.get("password")
+        user_id = session.get("user_id")
+        user = User.query.get(user_id)
 
         if user and security_manager.check_password(user.password, password):
             try:
-                # Excluir usuário (cascade delete configurado nos relacionamentos)
+                # Excluir usuário e dados associados (cascade)
                 db.session.delete(user)
                 db.session.commit()
-
-                # Limpar sessão
                 session.clear()
-
-                # Remover cookie JWT (se estiver usando)
-                response = redirect(url_for("login"))
-                # response.delete_cookie("jwt_token")
-
-                flash("Sua conta foi excluída com sucesso.", "info")
-                return response
+                flash("Sua conta foi excluída com sucesso.", "success")
+                return redirect(url_for("login"))
             except Exception as e:
                 db.session.rollback()
-                app.logger.error(f"Erro ao excluir conta {user.email}: {e}")
+                app.logger.error(f"Erro ao excluir conta do usuário {user_id}: {e}")
                 flash("Ocorreu um erro ao tentar excluir sua conta. Tente novamente.", "danger")
         else:
-            flash("Senha incorreta. Tente novamente.", "danger")
+            flash("Senha incorreta. A exclusão da conta não foi realizada.", "danger")
 
     # Gerar token CSRF para o formulário
     csrf_token = security_manager.generate_csrf_token()
 
     return render_template("delete_account.html", csrf_token=csrf_token)
 
-# Rotas para dashboard e empresas
+# Rotas principais da aplicação
 @app.route("/")
 def index():
     if "user_id" in session:
@@ -432,25 +449,26 @@ def index():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    # Buscar empresas do usuário
-    try:
-        companies = Company.query.filter_by(user_id=session["user_id"]).order_by(Company.name).all()
-    except Exception as e:
-        app.logger.error(f"Erro ao buscar empresas para usuário {session['user_id']}: {e}")
-        flash("Erro ao carregar suas empresas. Tente atualizar a página.", "danger")
-        companies = []
+    user_id = session.get("user_id")
+    user = User.query.get(user_id)
+    companies = Company.query.filter_by(user_id=user_id).order_by(Company.name).all()
+    return render_template("dashboard.html", user=user, companies=companies)
 
-    return render_template("dashboard.html", companies=companies)
-
-@app.route("/company/add", methods=["GET", "POST"])
+@app.route("/add-company", methods=["GET", "POST"])
 @login_required
-@csrf_protected
 def add_company():
     if request.method == "POST":
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("add_company"))
+
         name = request.form.get("name")
         cnpj = request.form.get("cnpj")
         segment = request.form.get("segment")
         description = request.form.get("description")
+        user_id = session.get("user_id")
 
         # Sanitizar entrada
         name = security_manager.sanitize_input(name)
@@ -463,13 +481,12 @@ def add_company():
             csrf_token = security_manager.generate_csrf_token()
             return render_template("add_company.html", csrf_token=csrf_token, name=name, cnpj=cnpj, segment=segment, description=description)
 
-        # Criar nova empresa
         new_company = Company(
-            user_id=session["user_id"],
+            user_id=user_id,
             name=name,
             cnpj=cnpj,
             segment=segment,
-            description=description,
+            description=description
         )
 
         try:
@@ -479,7 +496,7 @@ def add_company():
             return redirect(url_for("dashboard"))
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Erro ao adicionar empresa para usuário {session['user_id']}: {e}")
+            app.logger.error(f"Erro ao adicionar empresa para usuário {user_id}: {e}")
             flash("Ocorreu um erro ao adicionar a empresa. Tente novamente.", "danger")
             csrf_token = security_manager.generate_csrf_token()
             return render_template("add_company.html", csrf_token=csrf_token, name=name, cnpj=cnpj, segment=segment, description=description)
@@ -492,48 +509,48 @@ def add_company():
 @app.route("/company/<int:company_id>")
 @login_required
 def company_detail(company_id):
-    # Buscar empresa e verificar permissão
-    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
+    documents = Document.query.filter_by(company_id=company_id).order_by(Document.upload_date.desc()).all()
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
 
-    # Buscar documentos e questionários associados
-    try:
-        documents = Document.query.filter_by(company_id=company_id).order_by(Document.upload_date.desc()).all()
-        questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
-    except Exception as e:
-        app.logger.error(f"Erro ao buscar detalhes da empresa {company_id}: {e}")
-        flash("Erro ao carregar detalhes da empresa.", "danger")
-        documents = []
-        questionnaire = None
+    # Calcular progresso (exemplo simples)
+    progress = 0
+    if questionnaire:
+        progress += 50
+    if documents:
+        progress += 50
 
-    return render_template("company_detail.html", company=company, documents=documents, questionnaire=questionnaire)
+    return render_template("company_detail.html", company=company, documents=documents, questionnaire=questionnaire, progress=progress)
 
-# Rotas para Questionário
 @app.route("/company/<int:company_id>/questionnaire", methods=["GET", "POST"])
 @login_required
-@csrf_protected
-def questionnaire(company_id):
-    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
-    template = QuestionnaireTemplate.get_template()
-    existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
-    responses = json.loads(existing_questionnaire.responses) if existing_questionnaire else {}
+def questionnaire_view(company_id):
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
+    questionnaire_template = QuestionnaireTemplate.get_template()
+    existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
+    existing_responses = json.loads(existing_questionnaire.responses) if existing_questionnaire else {}
 
     if request.method == "POST":
-        form_data = request.form.to_dict()
-        # Remover token CSRF dos dados a serem salvos
-        form_data.pop('csrf_token', None)
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("questionnaire_view", company_id=company_id))
 
-        # Sanitizar todas as respostas
-        sanitized_responses = {key: security_manager.sanitize_input(value) for key, value in form_data.items()}
+        responses = {}
+        for section in questionnaire_template["sections"]:
+            for question in section["questions"]:
+                responses[question["id"]] = security_manager.sanitize_input(request.form.get(question["id"]))
+
+        responses_json = json.dumps(responses)
 
         try:
             if existing_questionnaire:
-                existing_questionnaire.responses = json.dumps(sanitized_responses)
-                existing_questionnaire.updated_at = datetime.utcnow()
+                existing_questionnaire.responses = responses_json
             else:
-                new_questionnaire = Questionnaire(
-                    company_id=company_id,
-                    responses=json.dumps(sanitized_responses)
-                )
+                new_questionnaire = Questionnaire(company_id=company_id, responses=responses_json)
                 db.session.add(new_questionnaire)
             db.session.commit()
             flash("Questionário salvo com sucesso!", "success")
@@ -542,38 +559,48 @@ def questionnaire(company_id):
             db.session.rollback()
             app.logger.error(f"Erro ao salvar questionário para empresa {company_id}: {e}")
             flash("Ocorreu um erro ao salvar o questionário. Tente novamente.", "danger")
-            responses = sanitized_responses # Manter dados no formulário
 
     # Gerar token CSRF para o formulário
     csrf_token = security_manager.generate_csrf_token()
 
-    return render_template("questionnaire.html", company=company, template=template, responses=responses, csrf_token=csrf_token)
+    return render_template(
+        "questionnaire.html",
+        company=company,
+        questionnaire_template=questionnaire_template,
+        existing_responses=existing_responses,
+        csrf_token=csrf_token
+    )
 
-# Rotas para Upload de Documentos
 @app.route("/company/<int:company_id>/upload", methods=["GET", "POST"])
 @login_required
-@csrf_protected
 def upload_document(company_id):
-    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
 
     if request.method == "POST":
-        if 'file' not in request.files:
-            flash('Nenhum arquivo selecionado.', 'warning')
+        # Verificar token CSRF
+        csrf_token = request.form.get("csrf_token")
+        if not security_manager.validate_csrf_token(csrf_token):
+            flash("Erro de validação do formulário. Tente novamente.", "danger")
+            return redirect(url_for("upload_document", company_id=company_id))
+
+        if "file" not in request.files:
+            flash("Nenhum arquivo selecionado.", "danger")
             return redirect(request.url)
 
-        file = request.files['file']
-        document_type = request.form.get('document_type', 'Outro')
+        file = request.files["file"]
+        document_type = request.form.get("document_type", "Outro")
 
-        if file.filename == '':
-            flash('Nenhum arquivo selecionado.', 'warning')
+        if file.filename == "":
+            flash("Nenhum arquivo selecionado.", "danger")
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
             original_filename = secure_filename(file.filename)
-            # Criar um nome de arquivo único para armazenamento
-            file_ext = original_filename.rsplit('.', 1)[1].lower()
+            # Criar nome de arquivo único para armazenamento
+            file_ext = original_filename.rsplit(".", 1)[1].lower()
             stored_filename = f"{uuid.uuid4()}.{file_ext}"
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], stored_filename)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], stored_filename)
 
             try:
                 file.save(file_path)
@@ -584,165 +611,91 @@ def upload_document(company_id):
                     stored_filename=stored_filename,
                     document_type=document_type,
                     file_path=file_path,
-                    status="Processando" # Iniciar como processando
+                    status="Enviado" # Atualiza status após salvar
                 )
                 db.session.add(new_document)
                 db.session.commit()
 
-                # TODO: Iniciar processamento assíncrono do documento aqui (Celery, RQ, etc.)
-                # Ex: process_document_task.delay(new_document.id)
-                # Por enquanto, simulamos um processamento e marcamos como pendente
-                # Em uma implementação real, o processamento seria feito em background
-                # e atualizaria o status e extracted_data posteriormente.
-                new_document.status = "Pendente"
-                db.session.commit()
+                # Opcional: Iniciar processamento em background aqui
+                # process_document_async(new_document.id)
 
-                flash(f'Documento "{original_filename}" enviado com sucesso!', 'success')
-                return redirect(url_for('company_detail', company_id=company_id))
+                flash("Documento enviado com sucesso!", "success")
+                return redirect(url_for("company_detail", company_id=company_id))
 
             except Exception as e:
                 db.session.rollback()
-                app.logger.error(f"Erro ao salvar upload para empresa {company_id}: {e}")
-                flash('Ocorreu um erro ao enviar o documento. Tente novamente.', 'danger')
-                # Tentar remover o arquivo se ele foi parcialmente salvo
+                app.logger.error(f"Erro ao salvar documento para empresa {company_id}: {e}")
+                # Tentar remover arquivo parcialmente salvo se existir
                 if os.path.exists(file_path):
                     try:
                         os.remove(file_path)
                     except OSError as remove_error:
-                        app.logger.error(f"Erro ao remover arquivo após falha no upload: {remove_error}")
+                        app.logger.error(f"Erro ao remover arquivo parcialmente salvo {file_path}: {remove_error}")
+                flash("Ocorreu um erro ao enviar o documento. Tente novamente.", "danger")
 
         else:
-            flash('Tipo de arquivo não permitido.', 'danger')
+            flash("Tipo de arquivo não permitido.", "danger")
 
     # Gerar token CSRF para o formulário
     csrf_token = security_manager.generate_csrf_token()
-    # Buscar documentos existentes para exibir na página
-    documents = Document.query.filter_by(company_id=company_id).order_by(Document.upload_date.desc()).all()
 
-    return render_template("upload_document.html", company=company, documents=documents, csrf_token=csrf_token)
+    return render_template("upload_document.html", company=company, csrf_token=csrf_token)
 
-@app.route('/uploads/<filename>')
+@app.route("/uploads/<filename>")
 @login_required
 def uploaded_file(filename):
-    # Verificar se o usuário tem permissão para acessar este arquivo
-    # Buscando o documento pelo nome armazenado
-    doc = Document.query.filter_by(stored_filename=filename).first()
-    if not doc:
-        return "Arquivo não encontrado", 404
-
-    # Verificar se a empresa do documento pertence ao usuário logado
-    company = Company.query.filter_by(id=doc.company_id, user_id=session["user_id"]).first()
-    if not company:
+    # Adicionar verificação para garantir que o usuário só possa acessar seus próprios arquivos
+    # Esta é uma implementação básica, pode precisar de mais segurança
+    doc = Document.query.filter_by(stored_filename=filename).first_or_404()
+    company = Company.query.get_or_404(doc.company_id)
+    if company.user_id != session.get("user_id"):
         return "Acesso não autorizado", 403
 
-    # Servir o arquivo de forma segura
-    try:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    except FileNotFoundError:
-        app.logger.error(f"Arquivo não encontrado no diretório de uploads: {filename}")
-        return "Arquivo não encontrado no servidor", 404
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
-# Rotas para Diagnóstico e Valuation
 @app.route("/company/<int:company_id>/financial-diagnostic")
 @login_required
 def financial_diagnostic_view(company_id):
-    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
-    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
-    documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Apenas processados
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
+    documents = Document.query.filter_by(company_id=company_id).all()
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
 
-    diagnostic_data = None
-    if questionnaire:
-        try:
-            # TODO: Implementar a lógica real de diagnóstico
-            # diagnostic_data = financial_diagnostic.generate_diagnostic(json.loads(questionnaire.responses), documents)
-            # Simulação:
-            diagnostic_data = {
-                "score": 75,
-                "summary": "A saúde financeira geral é boa, mas há pontos de atenção na liquidez e eficiência operacional.",
-                "recommendations": [
-                    "Revisar políticas de crédito para reduzir prazo de recebimento.",
-                    "Otimizar níveis de estoque para melhorar o giro.",
-                    "Buscar renegociação de prazos com fornecedores chave."
-                ],
-                "indicators": {
-                    "Rentabilidade": {"Margem Líquida": "15%", "ROE": "20%"},
-                    "Liquidez": {"Liquidez Corrente": "1.2", "Liquidez Seca": "0.8"},
-                    "Endividamento": {"Endividamento Geral": "40%", "Cobertura de Juros": "3.5x"},
-                    "Eficiência": {"Giro de Estoque": "60 dias", "Prazo Médio Recebimento": "45 dias"}
-                }
-            }
-        except Exception as e:
-            app.logger.error(f"Erro ao gerar diagnóstico para empresa {company_id}: {e}")
-            flash("Erro ao gerar o diagnóstico financeiro.", "danger")
-    else:
-        flash("Preencha o questionário financeiro para gerar o diagnóstico.", "info")
+    # Gerar diagnóstico (exemplo)
+    diagnostic_data = financial_diagnostic.generate_diagnostic(documents, questionnaire)
 
     return render_template("financial_diagnostic.html", company=company, diagnostic_data=diagnostic_data)
 
 @app.route("/company/<int:company_id>/valuation")
 @login_required
 def valuation_view(company_id):
-    company = Company.query.filter_by(id=company_id, user_id=session["user_id"]).first_or_404()
-    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
-    # Poderia usar documentos também
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
+    documents = Document.query.filter_by(company_id=company_id).all()
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
 
-    valuation_data = None
-    if questionnaire:
-        try:
-            # TODO: Implementar a lógica real de valuation
-            # valuation_data = valuation_calculator.calculate_valuation(json.loads(questionnaire.responses))
-            # Simulação:
-            valuation_data = {
-                "methods": {
-                    "Fluxo de Caixa Descontado (FCD)": "R$ 5.000.000",
-                    "Múltiplos de Mercado (EBITDA)": "R$ 4.500.000",
-                    "Valor Patrimonial": "R$ 3.000.000"
-                },
-                "estimated_range": "R$ 4.200.000 - R$ 5.300.000",
-                "sensitivity_analysis": {
-                    "Taxa de Desconto (+1%)": "- R$ 300.000",
-                    "Taxa de Crescimento (-1%)": "- R$ 400.000"
-                },
-                 "assumptions": [
-                    "Taxa de desconto (WACC): 15%",
-                    "Taxa de crescimento na perpetuidade: 3%",
-                    "Múltiplo EBITDA médio do setor: 6x"
-                 ]
-            }
-        except Exception as e:
-            app.logger.error(f"Erro ao calcular valuation para empresa {company_id}: {e}")
-            flash("Erro ao calcular o valuation.", "danger")
-    else:
-        flash("Preencha o questionário financeiro para calcular o valuation.", "info")
+    # Calcular valuation (exemplo)
+    valuation_data = valuation_calculator.calculate_valuation(documents, questionnaire)
 
     return render_template("valuation.html", company=company, valuation_data=valuation_data)
 
-# Tratamento de erros
+# Handlers de erro
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+    return render_template("404.html"), 404
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    # Logar o erro completo
+    # Logar o erro real
     app.logger.error(f"Erro interno do servidor: {e}", exc_info=True)
-    # Em produção, evitar mostrar detalhes do erro para o usuário
-    return render_template('500.html'), 500
+    # Em produção, não mostrar detalhes do erro para o usuário
+    return render_template("500.html"), 500
 
-# Comando para criar tabelas (opcional, pode usar Flask-Migrate)
-@app.cli.command("create-db")
-def create_db():
-    """Cria as tabelas do banco de dados."""
-    try:
-        db.create_all()
-        print("Tabelas criadas com sucesso!")
-    except Exception as e:
-        print(f"Erro ao criar tabelas: {e}")
-
-if __name__ == '__main__':
-    # Usar 'waitress' ou 'gunicorn' em produção
-    port = int(os.environ.get('PORT', 5000))
-    # Executar com debug=False em produção
-    app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_DEBUG', 'False') == 'True')
-
+# Ponto de entrada para execução (se necessário para desenvolvimento local)
+if __name__ == "__main__":
+    # Não use db.create_all() aqui em produção, use migrações
+    # Com a inicialização automática acima, isso não é mais necessário
+    # with app.app_context():
+    #     db.create_all()
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
