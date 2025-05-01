@@ -2,80 +2,27 @@
 
 {% block title %}Valuation - {{ company.name }} - CFO as a Service{% endblock %}
 
-{% block head_extra %}
-<!-- Chart.js for graphs -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-    .valuation-method-card {
-        margin-bottom: 1.5rem;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <h1 class="mt-4">Valuation - {{ company.name }}</h1>
 
-{% if valuation %}
-    <div class="alert alert-info mt-3">
-        <strong>Status do Valuation:</strong> {{ valuation.status }}
-    </div>
-
+{% if raw_questionnaire_data %}
     <div class="card mt-4">
-        <div class="card-header">Estimativa de Valor</div>
-        <div class="card-body text-center">
-            <h2 class="display-5">{{ valuation.range_min }} - {{ valuation.range_max }}</h2>
-            <p class="text-muted">Baseado em: {{ valuation.methods_used | join(', ') }}</p>
-        </div>
-    </div>
-
-    <div class="card mt-4">
-        <div class="card-header">Premissas Utilizadas</div>
+        <div class="card-header">Dados Brutos do Questionário Salvo</div>
         <div class="card-body">
-            <p>{{ valuation.assumptions }}</p>
+            <p>Abaixo estão os dados brutos salvos do último questionário preenchido. A funcionalidade completa de cálculo de valuation será implementada na Fase 2.</p>
+            <pre style="white-space: pre-wrap; word-wrap: break-word; background-color: #f8f9fa; padding: 15px; border-radius: 5px;">{{ raw_questionnaire_data | tojson(indent=2) }}</pre>
         </div>
     </div>
 
-    <h2 class="mt-4">Detalhes por Método (Exemplo)</h2>
-    <div class="row">
-        <!-- Example: Discounted Cash Flow -->
-        <div class="col-md-6">
-            <div class="card valuation-method-card">
-                <div class="card-header">Fluxo de Caixa Descontado (Simulado)</div>
-                <div class="card-body">
-                    <p>Valor Estimado: R$ 6.500.000</p>
-                    <p>Taxa de Desconto (WACC): 15%</p>
-                    <p>Taxa de Crescimento na Perpetuidade: 3%</p>
-                    <!-- Placeholder for sensitivity analysis chart -->
-                    <canvas id="dcfSensitivityChart" height="150"></canvas>
-                </div>
-            </div>
+    {% if raw_questionnaire_data.error %}
+        <div class="alert alert-danger mt-3">
+            <strong>Erro:</strong> {{ raw_questionnaire_data.error }}
         </div>
-        <!-- Example: Market Multiples -->
-        <div class="col-md-6">
-            <div class="card valuation-method-card">
-                <div class="card-header">Múltiplos de Mercado (Simulado)</div>
-                <div class="card-body">
-                    <p>Valor Estimado: R$ 7.000.000</p>
-                    <p>Múltiplo Utilizado: EBITDA (8x)</p>
-                    <p>Empresas Comparáveis: Empresa A, Empresa B, Empresa C</p>
-                    <!-- Placeholder for multiples comparison chart -->
-                    <canvas id="multiplesChart" height="150"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card mt-2">
-        <div class="card-header">Análise de Sensibilidade</div>
-        <div class="card-body">
-            <p>{{ valuation.sensitivity_analysis }}</p>
-            <!-- Detailed sensitivity analysis could be presented here -->
-        </div>
-    </div>
+    {% endif %}
 
 {% else %}
     <div class="alert alert-warning mt-4">
-        O cálculo de valuation ainda não está disponível. Certifique-se de que o questionário financeiro foi preenchido.
+        Nenhum dado de questionário encontrado para esta empresa. Certifique-se de que o questionário foi preenchido e salvo.
     </div>
 {% endif %}
 
@@ -86,73 +33,6 @@
 {% endblock %}
 
 {% block scripts_extra %}
-{% if valuation %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Example DCF Sensitivity Chart (Bar)
-    const ctxDcf = document.getElementById('dcfSensitivityChart')?.getContext('2d');
-    if (ctxDcf) {
-        new Chart(ctxDcf, {
-            type: 'bar',
-            data: {
-                labels: ['-1% WACC', 'Base', '+1% WACC', '+1% Cresc.', '-1% Cresc.'],
-                datasets: [{
-                    label: 'Valuation (R$ Milhões)',
-                    data: [7.2, 6.5, 5.9, 7.0, 6.0], // Example data
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value + 'M';
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    }
-
-    // Example Multiples Chart (Bar)
-    const ctxMultiples = document.getElementById('multiplesChart')?.getContext('2d');
-    if (ctxMultiples) {
-        new Chart(ctxMultiples, {
-            type: 'bar',
-            data: {
-                labels: ['Empresa A', 'Empresa B', 'Empresa C', 'Sua Empresa'],
-                datasets: [{
-                    label: 'Múltiplo EBITDA',
-                    data: [8.5, 7.8, 9.0, 8.0], // Example data
-                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    }
-});
-</script>
-{% endif %}
+{# Removido o script Chart.js, pois dependia dos dados de valuation simulados #}
 {% endblock %}
 

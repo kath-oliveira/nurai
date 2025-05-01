@@ -615,17 +615,26 @@ def financial_diagnostic_view(company_id):
     user_id = session["user_id"]
     company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
 
-    # Coletar dados (exemplo: do questionário e documentos processados)
-    questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
-    documents = Document.query.filter_by(company_id=company_id, status="Processado").all()
+    # Coletar dados do questionário
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    # documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Document processing is simulated
 
-    questionnaire_data = json.loads(questionnaire.responses) if questionnaire else {}
-    document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
+    raw_questionnaire_data = {}
+    if questionnaire and questionnaire.responses:
+        try:
+            raw_questionnaire_data = json.loads(questionnaire.responses)
+        except json.JSONDecodeError:
+            flash("Erro ao carregar dados do questionário.", "danger")
+            raw_questionnaire_data = {"error": "Falha ao decodificar JSON das respostas."}
+    else:
+        flash("Nenhum questionário preenchido encontrado para esta empresa.", "warning")
 
-    # Gerar diagnóstico
-    diagnostic_data = financial_diagnostic.generate_diagnostic(questionnaire_data, document_data)
 
-    return render_template("financial_diagnostic.html", company=company, diagnostic_data=diagnostic_data)
+    # REMOVIDO: Chamada para a função de diagnóstico simulada
+    # diagnostic_data = financial_diagnostic.generate_diagnostic(questionnaire_data, document_data)
+
+    # Passar os dados brutos do questionário para o template
+    return render_template("financial_diagnostic.html", company=company, raw_questionnaire_data=raw_questionnaire_data)
 
 @app.route("/company/<int:company_id>/valuation")
 @login_required
@@ -633,17 +642,25 @@ def valuation_view(company_id):
     user_id = session["user_id"]
     company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
 
-    # Coletar dados (similar ao diagnóstico)
-    questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
-    documents = Document.query.filter_by(company_id=company_id, status="Processado").all()
+    # Coletar dados do questionário
+    questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
+    # documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Document processing is simulated
 
-    questionnaire_data = json.loads(questionnaire.responses) if questionnaire else {}
-    document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
+    raw_questionnaire_data = {}
+    if questionnaire and questionnaire.responses:
+        try:
+            raw_questionnaire_data = json.loads(questionnaire.responses)
+        except json.JSONDecodeError:
+            flash("Erro ao carregar dados do questionário.", "danger")
+            raw_questionnaire_data = {"error": "Falha ao decodificar JSON das respostas."}
+    else:
+        flash("Nenhum questionário preenchido encontrado para esta empresa.", "warning")
 
-    # Calcular valuation
-    valuation_data = valuation_calculator.calculate_valuation(questionnaire_data, document_data)
+    # REMOVIDO: Chamada para a função de cálculo de valuation simulada
+    # valuation_data = valuation_calculator.calculate_valuation(questionnaire_data, document_data)
 
-    return render_template("valuation.html", company=company, valuation_data=valuation_data)
+    # Passar os dados brutos do questionário para o template
+    return render_template("valuation.html", company=company, raw_questionnaire_data=raw_questionnaire_data)
 
 # Handlers de erro
 @app.errorhandler(404)
