@@ -45,11 +45,25 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db) # Flask-Migrate será usado para criar/atualizar tabelas
 
-# --- REMOVIDO: Inicialização automática do banco de dados ---
-# def initialize_database():
-#     ...
-# initialize_database()
-# --- FIM REMOÇÃO ---
+# --- INÍCIO: Inicialização automática do banco de dados ---
+def initialize_database():
+    """Verifica se as tabelas existem e as cria se necessário."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        # Verifica se a tabela 'users' existe
+        if not inspector.has_table("users"):
+            app.logger.info("Tabela 'users' não encontrada. Criando todas as tabelas...")
+            try:
+                db.create_all()
+                app.logger.info("Tabelas criadas com sucesso.")
+            except Exception as e:
+                app.logger.error(f"Erro ao criar tabelas: {e}")
+        else:
+            app.logger.info("Tabelas já existem.")
+
+# Chama a função de inicialização uma vez ao iniciar a aplicação
+initialize_database()
+# --- FIM: Inicialização automática do banco de dados ---
 
 # Inicializar gerenciador de segurança
 security_manager = SecurityManager(app)
