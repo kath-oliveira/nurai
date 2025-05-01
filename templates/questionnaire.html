@@ -19,7 +19,7 @@
 <h1 class="mt-4">Questionário Financeiro - {{ company.name }}</h1>
 <p>Responda às perguntas abaixo para nos ajudar a entender melhor a situação financeira da sua empresa.</p>
 
-<form method="POST" action="{{ url_for('questionnaire', company_id=company.id) }}" id="questionnaireForm">
+<form method="POST" action="{{ url_for('questionnaire_view', company_id=company.id) }}" id="questionnaireForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
 
     <ul class="nav nav-tabs" id="questionnaireTabs" role="tablist">
