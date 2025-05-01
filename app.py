@@ -45,25 +45,25 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db) # Flask-Migrate será usado para criar/atualizar tabelas
 
-# --- INÍCIO: Inicialização automática do banco de dados ---
-def initialize_database():
-    """Verifica se as tabelas existem e as cria se necessário."""
-    with app.app_context():
-        inspector = inspect(db.engine)
-        # Verifica se a tabela 'users' existe
-        if not inspector.has_table("users"):
-            app.logger.info("Tabela 'users' não encontrada. Criando todas as tabelas...")
-            try:
-                db.create_all()
-                app.logger.info("Tabelas criadas com sucesso.")
-            except Exception as e:
-                app.logger.error(f"Erro ao criar tabelas: {e}")
-        else:
-            app.logger.info("Tabelas já existem.")
-
-# Chama a função de inicialização uma vez ao iniciar a aplicação
-initialize_database()
-# --- FIM: Inicialização automática do banco de dados ---
+# --- INÍCIO: Inicialização automática do banco de dados via before_first_request ---
+@app.before_request
+def create_tables():
+    # O decorator @app.before_request executa antes de CADA requisição.
+    # Usamos uma flag global para garantir que db.create_all() só rode uma vez.
+    if not getattr(app, 'db_initialized', False):
+        with app.app_context():
+            inspector = inspect(db.engine)
+            if not inspector.has_table("users"):
+                app.logger.info("Tabela 'users' não encontrada. Criando todas as tabelas...")
+                try:
+                    db.create_all()
+                    app.logger.info("Tabelas criadas com sucesso.")
+                except Exception as e:
+                    app.logger.error(f"Erro ao criar tabelas: {e}")
+            else:
+                app.logger.info("Tabelas já existem.")
+        app.db_initialized = True # Marca que a inicialização foi feita (ou verificada)
+# --- FIM: Inicialização automática do banco de dados via before_first_request ---
 
 # Inicializar gerenciador de segurança
 security_manager = SecurityManager(app)
