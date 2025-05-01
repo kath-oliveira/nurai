@@ -14,7 +14,8 @@
         <div class="card mb-4">
             <div class="card-header">Questionário Financeiro</div>
             <div class="card-body">
-                {% if has_questionnaire %}
+                {# Modificado para verificar diretamente o objeto 'questionnaire' #}
+                {% if questionnaire %}
                     <p>O questionário financeiro foi preenchido.</p>
                     <a href="{{ url_for('questionnaire_view', company_id=company.id) }}" class="btn btn-secondary"><i class="fas fa-edit me-2"></i>Editar Questionário</a>
                 {% else %}
@@ -53,12 +54,16 @@
             <div class="card-header">Análises</div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('financial_diagnostic_view', company_id=company.id) }}" class="btn btn-info {% if not has_questionnaire and not documents %}disabled{% endif %}"><i class="fas fa-chart-line me-2"></i>Ver Diagnóstico Financeiro</a>
-                    <a href="{{ url_for('valuation_view', company_id=company.id) }}" class="btn btn-warning {% if not has_questionnaire %}disabled{% endif %}"><i class="fas fa-calculator me-2"></i>Calcular Valuation</a>
+                    {# Modificado para verificar diretamente 'questionnaire' e 'documents' #}
+                    <a href="{{ url_for('financial_diagnostic_view', company_id=company.id) }}" class="btn btn-info {% if not questionnaire and not documents %}disabled{% endif %}"><i class="fas fa-chart-line me-2"></i>Ver Diagnóstico Financeiro</a>
+                    {# Modificado para verificar diretamente 'questionnaire' #}
+                    <a href="{{ url_for('valuation_view', company_id=company.id) }}" class="btn btn-warning {% if not questionnaire %}disabled{% endif %}"><i class="fas fa-calculator me-2"></i>Calcular Valuation</a>
                 </div>
-                {% if not has_questionnaire and not documents %}
+                {# Modificado para verificar diretamente 'questionnaire' e 'documents' #}
+                {% if not questionnaire and not documents %}
                 <small class="text-muted mt-2 d-block">Preencha o questionário ou envie documentos para habilitar as análises.</small>
-                {% elif not has_questionnaire %}
+                {# Modificado para verificar diretamente 'questionnaire' #}
+                {% elif not questionnaire %}
                  <small class="text-muted mt-2 d-block">Preencha o questionário para habilitar o cálculo de valuation.</small>
                 {% endif %}
             </div>
