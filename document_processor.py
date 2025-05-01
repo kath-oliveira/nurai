@@ -86,10 +86,13 @@ class FinancialDiagnostic:
         summary_parts = []
         recommendations = set(diagnostic["recommendations"]) # Usar set para evitar duplicatas
 
-        # Margem de Lucro
+        # Margem de Lucro e Rentabilidade (usando margem como proxy)
         if faturamento > 0:
             margem_lucro = (lucro_liquido / faturamento) * 100
-            diagnostic["indicators"]["margem_lucro"] = f"{margem_lucro:.2f}%"
+            margem_lucro_str = f"{margem_lucro:.2f}%"
+            diagnostic["indicators"]["margem_lucro"] = margem_lucro_str
+            diagnostic["indicators"]["rentabilidade"] = margem_lucro_str # Usando margem como proxy
+
             if margem_lucro < 5:
                 summary_parts.append("Margem de lucro parece baixa.")
                 recommendations.add("Analisar precificação e estrutura de custos.")
@@ -99,22 +102,27 @@ class FinancialDiagnostic:
                  summary_parts.append("Margem de lucro em nível razoável.")
         else:
             diagnostic["indicators"]["margem_lucro"] = "Faturamento não informado ou zero."
-            summary_parts.append("Não foi possível calcular a margem de lucro (faturamento zero ou não informado).")
+            diagnostic["indicators"]["rentabilidade"] = "Não calculado (faturamento zero ou não informado)."
+            summary_parts.append("Não foi possível calcular a margem de lucro/rentabilidade (faturamento zero ou não informado).")
 
-        # Endividamento (Exemplo simples: comparado ao faturamento)
-        if faturamento > 0 and endividamento_total > 0:
+        # Endividamento (Corrigido: calcular se faturamento > 0)
+        if faturamento > 0:
             indice_endividamento = (endividamento_total / faturamento)
             diagnostic["indicators"]["endividamento"] = f"Dívida/Faturamento: {indice_endividamento:.2f}"
             if indice_endividamento > 0.8:
                 summary_parts.append("Nível de endividamento parece alto em relação ao faturamento.")
                 recommendations.add("Analisar estrutura de capital e renegociar dívidas se possível.")
+            elif indice_endividamento < 0:
+                 summary_parts.append("Crédito líquido informado (dívida negativa).")
             else:
                 summary_parts.append("Nível de endividamento parece controlado.")
-        elif endividamento_total == 0:
-             diagnostic["indicators"]["endividamento"] = "Nenhuma dívida informada."
-             summary_parts.append("Nenhuma dívida informada.")
         else:
             diagnostic["indicators"]["endividamento"] = "Não calculado (faturamento zero ou não informado)."
+
+        # Liquidez (Não calculável apenas com questionário)
+        # Para calcular Liquidez Corrente (Ativo Circulante / Passivo Circulante) ou Seca,
+        # precisaríamos desses dados, que não estão no questionário atual.
+        diagnostic["indicators"]["liquidez"] = "Não calculado (dados insuficientes)"
 
         # Atualizar Sumário e Recomendações
         if summary_parts:
