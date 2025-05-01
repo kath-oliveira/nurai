@@ -484,6 +484,7 @@ def questionnaire_view(company_id):
     existing_responses = json.loads(existing_questionnaire.responses) if existing_questionnaire else {}
 
     if request.method == "POST":
+        app.logger.info(f"[Questionnaire POST] Iniciando salvamento para empresa {company_id}") # LOG ADICIONADO
         # Verificar token CSRF
         csrf_token = request.form.get("csrf_token")
         if not security_manager.validate_csrf_token(csrf_token):
@@ -495,22 +496,30 @@ def questionnaire_view(company_id):
             for question in section.get("questions", []):
                 q_id = question["id"]
                 responses[q_id] = request.form.get(q_id)
+        app.logger.info(f"[Questionnaire POST] Respostas coletadas: {responses}") # LOG ADICIONADO
 
         responses_json = json.dumps(responses)
+        app.logger.info(f"[Questionnaire POST] JSON a ser salvo: {responses_json}") # LOG ADICIONADO
 
         try:
             if existing_questionnaire:
+                app.logger.info(f"[Questionnaire POST] Atualizando questionário existente ID: {existing_questionnaire.id}") # LOG ADICIONADO
                 existing_questionnaire.responses = responses_json
                 existing_questionnaire.updated_at = datetime.utcnow()
             else:
+                app.logger.info(f"[Questionnaire POST] Criando novo questionário para empresa ID: {company_id}") # LOG ADICIONADO
                 new_questionnaire = Questionnaire(company_id=company_id, responses=responses_json)
                 db.session.add(new_questionnaire)
+
+            app.logger.info("[Questionnaire POST] Antes do db.session.commit()") # LOG ADICIONADO
             db.session.commit()
+            app.logger.info("[Questionnaire POST] Depois do db.session.commit() - Sucesso!") # LOG ADICIONADO
+
             flash("Questionário salvo com sucesso!", "success")
             return redirect(url_for("company_detail", company_id=company_id))
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Erro ao salvar questionário para empresa {company_id}: {e}")
+            app.logger.error(f"[Questionnaire POST] Erro EXCEPCIONAL ao salvar questionário para empresa {company_id}: {e}", exc_info=True) # LOG DETALHADO ADICIONADO
             flash("Ocorreu um erro ao tentar salvar o questionário. Tente novamente.", "danger")
 
     csrf_token = security_manager.generate_csrf_token()
@@ -616,23 +625,30 @@ def financial_diagnostic_view(company_id):
     company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
 
     # Coletar dados (exemplo: do questionário e documentos processados)
+    app.logger.info(f"[Diagnostic View] Buscando questionário para empresa {company_id}") # LOG ADICIONADO
     questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
     documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Note: Document processing is still simulated
 
     questionnaire_data = {}
     if questionnaire and questionnaire.responses:
+        app.logger.info(f"[Diagnostic View] Questionário encontrado ID: {questionnaire.id}, Updated: {questionnaire.updated_at}") # LOG ADICIONADO
         try:
             questionnaire_data = json.loads(questionnaire.responses)
-        except json.JSONDecodeError:
+            app.logger.info(f"[Diagnostic View] Dados do questionário carregados: {questionnaire_data}") # LOG ADICIONADO
+        except json.JSONDecodeError as e:
+            app.logger.error(f"[Diagnostic View] Erro ao decodificar JSON do questionário ID {questionnaire.id}: {e}") # LOG ADICIONADO
             flash("Erro ao carregar dados do questionário.", "danger")
     else:
+         app.logger.warning(f"[Diagnostic View] Nenhum questionário encontrado para empresa {company_id}") # LOG ADICIONADO
          flash("Nenhum questionário preenchido encontrado para esta empresa.", "warning")
 
     # Document data extraction (remains simulated as documents are not processed)
     document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
 
     # Gerar diagnóstico (agora chamará a função de cálculo)
+    app.logger.info(f"[Diagnostic View] Chamando generate_diagnostic com dados: {questionnaire_data}") # LOG ADICIONADO
     diagnostic_data = financial_diagnostic.generate_diagnostic(questionnaire_data, document_data)
+    app.logger.info(f"[Diagnostic View] Resultado do diagnóstico: {diagnostic_data}") # LOG ADICIONADO
 
     return render_template("financial_diagnostic.html", company=company, diagnostic_data=diagnostic_data)
 
@@ -643,23 +659,30 @@ def valuation_view(company_id):
     company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
 
     # Coletar dados (similar ao diagnóstico)
+    app.logger.info(f"[Valuation View] Buscando questionário para empresa {company_id}") # LOG ADICIONADO
     questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
     documents = Document.query.filter_by(company_id=company_id, status="Processado").all() # Note: Document processing is still simulated
 
     questionnaire_data = {}
     if questionnaire and questionnaire.responses:
+        app.logger.info(f"[Valuation View] Questionário encontrado ID: {questionnaire.id}, Updated: {questionnaire.updated_at}") # LOG ADICIONADO
         try:
             questionnaire_data = json.loads(questionnaire.responses)
-        except json.JSONDecodeError:
+            app.logger.info(f"[Valuation View] Dados do questionário carregados: {questionnaire_data}") # LOG ADICIONADO
+        except json.JSONDecodeError as e:
+            app.logger.error(f"[Valuation View] Erro ao decodificar JSON do questionário ID {questionnaire.id}: {e}") # LOG ADICIONADO
             flash("Erro ao carregar dados do questionário.", "danger")
     else:
+         app.logger.warning(f"[Valuation View] Nenhum questionário encontrado para empresa {company_id}") # LOG ADICIONADO
          flash("Nenhum questionário preenchido encontrado para esta empresa.", "warning")
 
     # Document data extraction (remains simulated as documents are not processed)
     document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
 
     # Calcular valuation (agora chamará a função de cálculo)
+    app.logger.info(f"[Valuation View] Chamando calculate_valuation com dados: {questionnaire_data}") # LOG ADICIONADO
     valuation_data = valuation_calculator.calculate_valuation(questionnaire_data, document_data)
+    app.logger.info(f"[Valuation View] Resultado do valuation: {valuation_data}") # LOG ADICIONADO
 
     return render_template("valuation.html", company=company, valuation_data=valuation_data)
 
