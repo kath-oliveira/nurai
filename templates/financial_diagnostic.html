@@ -2,27 +2,91 @@
 
 {% block title %}Diagnóstico Financeiro - {{ company.name }} - CFO as a Service{% endblock %}
 
+{% block head_extra %}
+<!-- Chart.js for graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .indicator-card {
+        border-left: 5px solid #0d6efd; /* Blue */
+        margin-bottom: 1rem;
+    }
+    .indicator-card.attention {
+        border-left-color: #ffc107; /* Yellow */
+    }
+    .indicator-card.critical {
+        border-left-color: #dc3545; /* Red */
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1 class="mt-4">Diagnóstico Financeiro - {{ company.name }}</h1>
 
-{% if raw_questionnaire_data %}
+{# Use diagnostic_data which is now passed from the updated app.py route #}
+{% if diagnostic_data %}
+    <div class="alert alert-info mt-3">
+        <strong>Status do Diagnóstico:</strong> {{ diagnostic_data.status }}
+    </div>
+
     <div class="card mt-4">
-        <div class="card-header">Dados Brutos do Questionário Salvo</div>
+        <div class="card-header">Resumo da Análise</div>
         <div class="card-body">
-            <p>Abaixo estão os dados brutos salvos do último questionário preenchido. A funcionalidade completa de diagnóstico financeiro será implementada na Fase 2.</p>
-            <pre style="white-space: pre-wrap; word-wrap: break-word; background-color: #f8f9fa; padding: 15px; border-radius: 5px;">{{ raw_questionnaire_data | tojson(indent=2) }}</pre>
+            <p>{{ diagnostic_data.summary }}</p>
         </div>
     </div>
 
-    {% if raw_questionnaire_data.error %}
-        <div class="alert alert-danger mt-3">
-            <strong>Erro:</strong> {{ raw_questionnaire_data.error }}
+    <div class="card mt-4">
+        <div class="card-header">Recomendações</div>
+        <div class="card-body">
+            <ul>
+                {% for recommendation in diagnostic_data.recommendations %}
+                <li>{{ recommendation }}</li>
+                {% endfor %}
+            </ul>
         </div>
-    {% endif %}
+    </div>
+
+    <h2 class="mt-4">Indicadores Chave</h2>
+    <div class="row">
+        {% for key, value in diagnostic_data.indicators.items() %}
+        <div class="col-md-6 col-lg-3">
+            {# Add attention/critical classes based on content if needed #}
+            <div class="card indicator-card {% if 'Atenção' in value|string %}attention{% elif 'Crítico' in value|string %}critical{% elif 'alto' in value|string %}attention{% elif 'baixa' in value|string %}attention{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title text-capitalize">{{ key.replace('_', ' ') }}</h5>
+                    <p class="card-text">{{ value }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Placeholder for Charts (can be re-enabled if data is suitable) -->
+    {#
+    <h2 class="mt-4">Visualizações Gráficas (Exemplo)</h2>
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Distribuição de Despesas</div>
+                <div class="card-body">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Evolução da Receita</div>
+                <div class="card-body">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    #}
 
 {% else %}
     <div class="alert alert-warning mt-4">
-        Nenhum dado de questionário encontrado para esta empresa. Certifique-se de que o questionário foi preenchido e salvo.
+        O diagnóstico financeiro ainda não pôde ser gerado. Certifique-se de que o questionário foi preenchido com dados válidos (como Faturamento Anual e Lucro Líquido).
     </div>
 {% endif %}
 
@@ -33,6 +97,7 @@
 {% endblock %}
 
 {% block scripts_extra %}
-{# Removido o script Chart.js, pois dependia dos dados de diagnóstico simulados #}
+{# Chart.js script removed as the basic calculation doesn't provide data for charts yet #}
+{# If adding charts later, ensure diagnostic_data provides necessary values #}
 {% endblock %}
 
