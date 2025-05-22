@@ -1,57 +1,87 @@
-# Formulário de Diagnóstico Financeiro
+# Automação Financeira para CFO as a Service
 
-Este documento descreve as modificações realizadas na aplicação para implementar o formulário de diagnóstico financeiro estruturado conforme as especificações.
+Este projeto é uma aplicação web Flask desenvolvida para automatizar tarefas de diagnóstico financeiro e cálculo de valuation para Pequenas e Médias Empresas (PMEs), auxiliando consultores que atuam como CFO as a Service.
 
-## Modificações Realizadas
+## Funcionalidades Principais
 
-### 1. Modelo de Dados
-- Criado novo modelo `DiagnosticQuestionnaire` com todos os campos necessários para as 9 seções do formulário
-- Implementados relacionamentos com os modelos existentes
-- Mantido o modelo legado `QuestionarioResposta` para compatibilidade
+*   **Autenticação de Usuários:** Cadastro, login, recuperação de senha e exclusão de conta seguros.
+*   **Gerenciamento de Empresas:** Adição e visualização de múltiplas empresas clientes.
+*   **Questionário Financeiro:** Coleta de informações detalhadas sobre a situação financeira da empresa através de um questionário estruturado.
+*   **Upload de Documentos:** Permite o envio de documentos financeiros (extratos, DRE, balanços, etc.) para análise (processamento detalhado na Fase 2).
+*   **Diagnóstico Financeiro:** Geração de um diagnóstico preliminar baseado nas respostas do questionário, com indicadores chave e recomendações (análise aprofundada na Fase 2).
+*   **Cálculo de Valuation:** Estimativa preliminar do valor da empresa baseada nas respostas do questionário (cálculos detalhados na Fase 2).
+*   **Interface Responsiva:** Design adaptável para desktops, tablets e smartphones com barra lateral colapsável.
 
-### 2. Backend
-- Implementadas novas rotas para o formulário multi-etapas
-- Adicionada lógica para processamento de cada seção do formulário
-- Criada funcionalidade de revisão de dados antes da finalização
-- Implementada validação de dados no servidor
+## Tecnologias Utilizadas
 
-### 3. Frontend
-- Criado template para o formulário multi-etapas (wizard)
-- Implementadas as 9 seções conforme especificações:
-  - Dados Gerais da Empresa
-  - Proposta de Valor e Mercado
-  - Mercado e Validação
-  - Estrutura e Operação
-  - Produto/Solução e Propriedade Intelectual
-  - Concorrência e Estratégia de Mercado
-  - Modelo de Negócio e Fontes de Receita
-  - Projeções Financeiras
-  - Marketing, Comercial e Distribuição
-- Criada interface para revisão de dados
-- Implementada navegação entre etapas
-- Adicionada validação de formulário no cliente
+*   **Backend:** Python, Flask, Flask-SQLAlchemy, Flask-Login, Flask-WTF, Flask-Mail, Werkzeug (segurança), Gunicorn
+*   **Frontend:** HTML, CSS, JavaScript, Bootstrap 5, Chart.js
+*   **Banco de Dados:** PostgreSQL (recomendado para produção no Heroku), SQLite (para desenvolvimento local)
+*   **Segurança:** Hash de senhas (bcrypt), tokens CSRF, tokens JWT para reset de senha, headers de segurança.
 
-### 4. Estilos e Scripts
-- Adicionados estilos CSS para o formulário multi-etapas
-- Implementados scripts JavaScript para validação e interatividade
+## Configuração e Execução Local
 
-## Arquivos Modificados
-- `models.py` - Novo arquivo com os modelos de dados
-- `app.py` - Modificado para incluir as novas rotas e funcionalidades
-- `templates/diagnostic_questionnaire.html` - Novo template para o formulário multi-etapas
-- `templates/review_questionnaire.html` - Novo template para a revisão de dados
-- `static/css/style.css` - Estilos para o formulário
-- `static/js/diagnostic.js` - Scripts para validação e interatividade
+1.  **Clone o repositório:**
+    ```bash
+    git clone <url-do-repositorio>
+    cd automacao_financeira_github
+    ```
 
-## Como Usar
-1. Acesse o dashboard da aplicação
-2. Selecione uma empresa ou adicione uma nova
-3. Clique em "Iniciar Diagnóstico Financeiro"
-4. Preencha as 9 seções do formulário, navegando com os botões "Próximo" e "Anterior"
-5. Revise todos os dados na tela de revisão
-6. Finalize o diagnóstico
+2.  **Crie e ative um ambiente virtual:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # Linux/macOS
+    # venv\Scripts\activate  # Windows
+    ```
 
-## Observações
-- O formulário salva automaticamente cada seção ao avançar ou voltar
-- Campos obrigatórios são marcados com asterisco (*)
-- A tela de revisão mostra todos os dados preenchidos antes da finalização
+3.  **Instale as dependências:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Configure as variáveis de ambiente:**
+    Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis (ajuste conforme necessário):
+    ```
+    FLASK_APP=app.py
+    FLASK_ENV=development
+    SECRET_KEY=\'sua_chave_secreta_super_segura\'
+    # Configurações do Banco de Dados (Exemplo SQLite)
+    DATABASE_URL=sqlite:///instance/local_database.db
+    # Configurações de Email (para reset de senha - use Mailtrap, SendGrid, etc.)
+    MAIL_SERVER=smtp.mailtrap.io
+    MAIL_PORT=2525
+    MAIL_USERNAME=seu_usuario_mailtrap
+    MAIL_PASSWORD=sua_senha_mailtrap
+    MAIL_USE_TLS=True
+    MAIL_USE_SSL=False
+    MAIL_DEFAULT_SENDER=(\'CFO Service\', \'noreply@example.com\')
+    ```
+    *Nota: Para produção no Heroku, estas variáveis serão configuradas diretamente no painel do Heroku.*
+
+5.  **Crie o banco de dados inicial:**
+    ```bash
+    flask db init  # Se for a primeira vez e usando Flask-Migrate (não incluído neste pacote básico)
+    flask db migrate -m "Initial migration." # Se usando Flask-Migrate
+    flask db upgrade # Se usando Flask-Migrate
+    # Ou, para a configuração básica sem Flask-Migrate:
+    python -c "from app import app, db; app.app_context().push(); db.create_all()"
+    ```
+    *Certifique-se de que a pasta `instance` existe se estiver usando SQLite.*
+
+6.  **Execute a aplicação:**
+    ```bash
+    flask run
+    ```
+    A aplicação estará disponível em `http://127.0.0.1:5000`.
+
+## Implantação no Heroku
+
+Siga as instruções detalhadas no arquivo `HEROKU_DEPLOYMENT.md` (incluído neste pacote) para implantar a aplicação no Heroku.
+
+## Próximos Passos (Fase 2)
+
+*   Implementação completa do processamento de documentos financeiros (extração de dados de PDFs, etc.).
+*   Desenvolvimento de algoritmos detalhados para diagnóstico financeiro e cálculo de valuation.
+*   Integração com APIs externas (se necessário).
+*   Melhorias na interface e experiência do usuário.
+
