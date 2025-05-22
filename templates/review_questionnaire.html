@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+
+{% block title %}Revisão do Diagnóstico Financeiro - {{ company.name }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .section-card {
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #0d6efd;
+    }
+    .section-title {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: 500;
+    }
+    .section-content {
+        padding: 15px;
+    }
+    .field-name {
+        font-weight: 500;
+        color: #495057;
+    }
+    .field-value {
+        margin-bottom: 0.5rem;
+    }
+    .empty-value {
+        color: #6c757d;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Revisão do Diagnóstico Financeiro</h1>
+    <p class="lead">Revise todas as informações fornecidas antes de finalizar o diagnóstico financeiro para {{ company.name }}.</p>
+    
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        Verifique cuidadosamente todas as informações. Após finalizar, você poderá visualizar o diagnóstico completo, mas não poderá editar as respostas.
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <!-- Seção 1: Dados Gerais da Empresa -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">1. Dados Gerais da Empresa</h3>
+                </div>
+                <div class="section-content">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">Nome da empresa:</div>
+                            <div class="field-value">{{ questionnaire.nome_empresa or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">CNPJ:</div>
+                            <div class="field-value">{{ questionnaire.cnpj or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">Ano de fundação:</div>
+                            <div class="field-value">{{ questionnaire.ano_fundacao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">Quantidade de sócios:</div>
+                            <div class="field-value">{{ questionnaire.quantidade_socios or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">Quantidade de funcionários:</div>
+                            <div class="field-value">{{ questionnaire.quantidade_funcionarios or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">Faturamento anual (R$):</div>
+                            <div class="field-value">{{ questionnaire.faturamento_anual or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">Setor de atuação:</div>
+                            <div class="field-value">{{ questionnaire.setor_atuacao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 2: Proposta de Valor e Mercado -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">2. Proposta de Valor e Mercado</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Problema(s) que a empresa resolve:</div>
+                        <div class="field-value">{{ questionnaire.problema_resolve or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Solução(ões) que a empresa oferece:</div>
+                        <div class="field-value">{{ questionnaire.solucao_oferece or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Timing do negócio:</div>
+                        <div class="field-value">{{ questionnaire.timing_negocio or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Modelo de negócios:</div>
+                        <div class="field-value">{{ questionnaire.modelo_negocios or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Diferenciais competitivos:</div>
+                        <div class="field-value">{{ questionnaire.diferenciais_competitivos or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Portfólio de produtos/serviços:</div>
+                        <div class="field-value">{{ questionnaire.portfolio_produtos or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 3: Mercado e Validação -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">3. Mercado e Validação</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Como a empresa identificou o mercado:</div>
+                        <div class="field-value">{{ questionnaire.identificacao_mercado or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">Potenciais clientes conversados:</div>
+                            <div class="field-value">{{ questionnaire.potenciais_clientes_conversados or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="field-name">Entrevistas com stakeholders:</div>
+                            <div class="field-value">{{ questionnaire.entrevistas_stakeholders or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Necessidades dos clientes atendidas:</div>
+                        <div class="field-value">{{ questionnaire.necessidades_clientes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Encaixe da solução no portfólio dos clientes:</div>
+                        <div class="field-value">{{ questionnaire.solucao_portfolio_clientes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Segmentos-alvo:</div>
+                        <div class="field-value">{{ questionnaire.segmentos_alvo or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Como clientes satisfazem atualmente essa necessidade:</div>
+                        <div class="field-value">{{ questionnaire.satisfacao_atual_necessidade or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 4: Estrutura e Operação -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">4. Estrutura e Operação</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Estrutura atual da empresa:</div>
+                        <div class="field-value">{{ questionnaire.estrutura_atual or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Colaboradores/sócios por área:</div>
+                        <div class="field-value">{{ questionnaire.colaboradores_por_area or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Principais competências e experiências da equipe:</div>
+                        <div class="field-value">{{ questionnaire.competencias_experiencias or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Deficiências na equipe e soluções:</div>
+                        <div class="field-value">{{ questionnaire.deficiencias_equipe or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 5: Produto/Solução e Propriedade Intelectual -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">5. Produto/Solução e Propriedade Intelectual</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Principais atributos da solução/produto:</div>
+                        <div class="field-value">{{ questionnaire.atributos_solucao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Produto gera resultados protegíveis:</div>
+                        <div class="field-value">{{ questionnaire.propriedade_intelectual or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    {% if questionnaire.propriedade_intelectual == 'Sim' %}
+                    <div class="mb-3">
+                        <div class="field-name">Estratégia para proteção da propriedade intelectual:</div>
+                        <div class="field-value">{{ questionnaire.estrategia_propriedade or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Seção 6: Concorrência e Estratégia de Mercado -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">6. Concorrência e Estratégia de Mercado</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Concorrentes diretos e indiretos:</div>
+                        <div class="field-value">{{ questionnaire.concorrentes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Diferenciais frente aos concorrentes:</div>
+                        <div class="field-value">{{ questionnaire.diferenciais_concorrentes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Posicionamento no mercado:</div>
+                        <div class="field-value">{{ questionnaire.posicionamento_mercado or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Descrição do posicionamento:</div>
+                        <div class="field-value">{{ questionnaire.descricao_posicionamento or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Barreiras de entrada e superação:</div>
+                        <div class="field-value">{{ questionnaire.barreiras_entrada or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Riscos e mitigações:</div>
+                        <div class="field-value">{{ questionnaire.riscos_mitigacoes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 7: Modelo de Negócio e Fontes de Receita -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">7. Modelo de Negócio e Fontes de Receita</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Fontes de receita:</div>
+                        <div class="field-value">{{ questionnaire.fontes_receita or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Modelo de geração de receita a partir da inovação:</div>
+                        <div class="field-value">{{ questionnaire.modelo_geracao_receita or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 8: Projeções Financeiras -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">8. Projeções Financeiras (5 anos)</h3>
+                </div>
+                <div class="section-content">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">TAM – Mercado Total Disponível (R$):</div>
+                            <div class="field-value">{{ questionnaire.tam_mercado_total or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">SAM – Mercado Alvo Disponível (R$):</div>
+                            <div class="field-value">{{ questionnaire.sam_mercado_alvo or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="field-name">SOM – Mercado Alcançável (R$):</div>
+                            <div class="field-value">{{ questionnaire.som_mercado_alcancavel or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Receitas estimadas (5 anos):</div>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Ano 1</th>
+                                    <th>Ano 2</th>
+                                    <th>Ano 3</th>
+                                    <th>Ano 4</th>
+                                    <th>Ano 5</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ questionnaire.receita_ano1 or 'N/A' }}</td>
+                                    <td>{{ questionnaire.receita_ano2 or 'N/A' }}</td>
+                                    <td>{{ questionnaire.receita_ano3 or 'N/A' }}</td>
+                                    <td>{{ questionnaire.receita_ano4 or 'N/A' }}</td>
+                                    <td>{{ questionnaire.receita_ano5 or 'N/A' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Custos estimados para os 5 anos:</div>
+                        <div class="field-value">{{ questionnaire.custos_estimados or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Justificativa das projeções:</div>
+                        <div class="field-value">{{ questionnaire.justificativa_projecoes or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Cronograma físico-financeiro:</div>
+                        <div class="field-value">{{ questionnaire.cronograma_financeiro or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seção 9: Marketing, Comercial e Distribuição -->
+            <div class="section-card">
+                <div class="section-title">
+                    <h3 class="mb-0">9. Marketing, Comercial e Distribuição</h3>
+                </div>
+                <div class="section-content">
+                    <div class="mb-3">
+                        <div class="field-name">Estratégias de marketing:</div>
+                        <div class="field-value">{{ questionnaire.estrategias_marketing or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Métodos de venda:</div>
+                        <div class="field-value">{{ questionnaire.metodos_venda or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Estratégia de inserção no mercado:</div>
+                        <div class="field-value">{{ questionnaire.estrategia_insercao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Estratégia de precificação:</div>
+                        <div class="field-value">{{ questionnaire.estrategia_precificacao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="field-name">Estratégias de distribuição, assistência técnica e pós-venda:</div>
+                        <div class="field-value">{{ questionnaire.estrategias_distribuicao or '<span class="empty-value">Não informado</span>'|safe }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between mb-5">
+        <a href="{{ url_for('diagnostic_questionnaire', company_id=company.id, section='marketing_comercial') }}" class="btn btn-secondary">Voltar e Editar</a>
+        
+        <form method="POST">
+            <button type="submit" class="btn btn-success">Finalizar Diagnóstico</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+
+{% block title %}Diagnóstico Financeiro - {{ company.name }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .nav-tabs .nav-link.active {
+        font-weight: bold;
+        background-color: #e9ecef;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    .tab-pane {
+        padding-top: 1rem;
+    }
+    .form-section {
+        display: none;
+    }
+    .form-section.active {
+        display: block;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .step {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        position: relative;
+        font-size: 0.9rem;
+    }
+    .step.active {
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    .step.completed {
+        color: #198754;
+    }
+    .step::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: 0;
+        width: 100%;
+        height: 2px;
+        background-color: #dee2e6;
+        z-index: -1;
+    }
+    .step:last-child::after {
+        display: none;
+    }
+    .step-number {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        border-radius: 50%;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        margin-bottom: 5px;
+    }
+    .step.active .step-number {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .step.completed .step-number {
+        background-color: #198754;
+        color: white;
+        border-color: #198754;
+    }
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Diagnóstico Financeiro - {{ company.name }}</h1>
+    <p class="lead">Preencha o formulário abaixo para gerar um diagnóstico financeiro completo para sua empresa.</p>
+    
+    <div class="step-indicator">
+        <div class="step {% if current_section == 'dados_gerais' %}active{% elif current_section != 'dados_gerais' %}completed{% endif %}">
+            <div class="step-number">1</div>
+            <div>Dados Gerais</div>
+        </div>
+        <div class="step {% if current_section == 'proposta_valor' %}active{% elif current_section in ['mercado_validacao', 'estrutura_operacao', 'produto_solucao', 'concorrencia_estrategia', 'modelo_receita', 'projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">2</div>
+            <div>Proposta de Valor</div>
+        </div>
+        <div class="step {% if current_section == 'mercado_validacao' %}active{% elif current_section in ['estrutura_operacao', 'produto_solucao', 'concorrencia_estrategia', 'modelo_receita', 'projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">3</div>
+            <div>Mercado</div>
+        </div>
+        <div class="step {% if current_section == 'estrutura_operacao' %}active{% elif current_section in ['produto_solucao', 'concorrencia_estrategia', 'modelo_receita', 'projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">4</div>
+            <div>Estrutura</div>
+        </div>
+        <div class="step {% if current_section == 'produto_solucao' %}active{% elif current_section in ['concorrencia_estrategia', 'modelo_receita', 'projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">5</div>
+            <div>Produto</div>
+        </div>
+        <div class="step {% if current_section == 'concorrencia_estrategia' %}active{% elif current_section in ['modelo_receita', 'projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">6</div>
+            <div>Concorrência</div>
+        </div>
+        <div class="step {% if current_section == 'modelo_receita' %}active{% elif current_section in ['projecoes_financeiras', 'marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">7</div>
+            <div>Receita</div>
+        </div>
+        <div class="step {% if current_section == 'projecoes_financeiras' %}active{% elif current_section in ['marketing_comercial'] %}completed{% endif %}">
+            <div class="step-number">8</div>
+            <div>Projeções</div>
+        </div>
+        <div class="step {% if current_section == 'marketing_comercial' %}active{% endif %}">
+            <div class="step-number">9</div>
+            <div>Marketing</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="diagnosticForm">
+                <input type="hidden" name="current_section" value="{{ current_section }}">
+                
+                <!-- Seção 1: Dados Gerais da Empresa -->
+                <div class="form-section {% if current_section == 'dados_gerais' %}active{% endif %}" id="dados_gerais">
+                    <h3 class="mb-4">1. Dados Gerais da Empresa</h3>
+                    
+                    <div class="mb-3">
+                        <label for="nome_empresa" class="form-label required-field">Nome da empresa</label>
+                        <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" value="{{ questionnaire.nome_empresa or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cnpj" class="form-label required-field">CNPJ</label>
+                        <input type="text" class="form-control" id="cnpj" name="cnpj" value="{{ questionnaire.cnpj or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ano_fundacao" class="form-label required-field">Ano de fundação</label>
+                        <input type="number" class="form-control" id="ano_fundacao" name="ano_fundacao" value="{{ questionnaire.ano_fundacao or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quantidade_socios" class="form-label required-field">Quantidade de sócios</label>
+                        <input type="number" class="form-control" id="quantidade_socios" name="quantidade_socios" value="{{ questionnaire.quantidade_socios or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quantidade_funcionarios" class="form-label required-field">Quantidade de funcionários</label>
+                        <input type="number" class="form-control" id="quantidade_funcionarios" name="quantidade_funcionarios" value="{{ questionnaire.quantidade_funcionarios or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="faturamento_anual" class="form-label required-field">Faturamento anual (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="faturamento_anual" name="faturamento_anual" value="{{ questionnaire.faturamento_anual or '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="setor_atuacao" class="form-label required-field">Setor de atuação</label>
+                        <select class="form-select" id="setor_atuacao" name="setor_atuacao" required>
+                            <option value="" {% if not questionnaire.setor_atuacao %}selected{% endif %}>Selecione...</option>
+                            <option value="Indústria" {% if questionnaire.setor_atuacao == 'Indústria' %}selected{% endif %}>Indústria</option>
+                            <option value="Varejo" {% if questionnaire.setor_atuacao == 'Varejo' %}selected{% endif %}>Varejo</option>
+                            <option value="Serviços" {% if questionnaire.setor_atuacao == 'Serviços' %}selected{% endif %}>Serviços</option>
+                            <option value="Tecnologia" {% if questionnaire.setor_atuacao == 'Tecnologia' %}selected{% endif %}>Tecnologia</option>
+                            <option value="Agro" {% if questionnaire.setor_atuacao == 'Agro' %}selected{% endif %}>Agro</option>
+                            <option value="Construção" {% if questionnaire.setor_atuacao == 'Construção' %}selected{% endif %}>Construção</option>
+                            <option value="Saúde" {% if questionnaire.setor_atuacao == 'Saúde' %}selected{% endif %}>Saúde</option>
+                            <option value="Educação" {% if questionnaire.setor_atuacao == 'Educação' %}selected{% endif %}>Educação</option>
+                            <option value="Outros" {% if questionnaire.setor_atuacao == 'Outros' %}selected{% endif %}>Outros</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Seção 2: Proposta de Valor e Mercado -->
+                <div class="form-section {% if current_section == 'proposta_valor' %}active{% endif %}" id="proposta_valor">
+                    <h3 class="mb-4">2. Proposta de Valor e Mercado</h3>
+                    
+                    <div class="mb-3">
+                        <label for="problema_resolve" class="form-label required-field">Qual(is) o(s) problema(s) que sua empresa resolve?</label>
+                        <textarea class="form-control" id="problema_resolve" name="problema_resolve" rows="3" required>{{ questionnaire.problema_resolve or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="solucao_oferece" class="form-label required-field">Qual(is) a(s) solução(ões) que sua empresa oferece?</label>
+                        <textarea class="form-control" id="solucao_oferece" name="solucao_oferece" rows="3" required>{{ questionnaire.solucao_oferece or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="timing_negocio" class="form-label">Por que agora é o momento certo (timing) para o negócio?</label>
+                        <textarea class="form-control" id="timing_negocio" name="timing_negocio" rows="3">{{ questionnaire.timing_negocio or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modelo_negocios" class="form-label required-field">Qual o modelo de negócios?</label>
+                        <select class="form-select" id="modelo_negocios" name="modelo_negocios" required>
+                            <option value="" {% if not questionnaire.modelo_negocios %}selected{% endif %}>Selecione...</option>
+                            <option value="Assinatura" {% if questionnaire.modelo_negocios == 'Assinatura' %}selected{% endif %}>Assinatura</option>
+                            <option value="Venda direta" {% if questionnaire.modelo_negocios == 'Venda direta' %}selected{% endif %}>Venda direta</option>
+                            <option value="Licenciamento" {% if questionnaire.modelo_negocios == 'Licenciamento' %}selected{% endif %}>Licenciamento</option>
+                            <option value="Freemium" {% if questionnaire.modelo_negocios == 'Freemium' %}selected{% endif %}>Freemium</option>
+                            <option value="Intermediação" {% if questionnaire.modelo_negocios == 'Intermediação' %}selected{% endif %}>Intermediação</option>
+                            <option value="Outro" {% if questionnaire.modelo_negocios == 'Outro' %}selected{% endif %}>Outro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="diferenciais_competitivos" class="form-label">Quais são os diferenciais competitivos da empresa?</label>
+                        <textarea class="form-control" id="diferenciais_competitivos" name="diferenciais_competitivos" rows="3">{{ questionnaire.diferenciais_competitivos or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="portfolio_produtos" class="form-label">Descreva seu portfólio de produtos/serviços</label>
+                        <textarea class="form-control" id="portfolio_produtos" name="portfolio_produtos" rows="3">{{ questionnaire.portfolio_produtos or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 3: Mercado e Validação -->
+                <div class="form-section {% if current_section == 'mercado_validacao' %}active{% endif %}" id="mercado_validacao">
+                    <h3 class="mb-4">3. Mercado e Validação</h3>
+                    
+                    <div class="mb-3">
+                        <label for="identificacao_mercado" class="form-label">Como sua empresa identificou esse mercado?</label>
+                        <textarea class="form-control" id="identificacao_mercado" name="identificacao_mercado" rows="3">{{ questionnaire.identificacao_mercado or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="potenciais_clientes_conversados" class="form-label">Quantos potenciais clientes sua empresa já conversou?</label>
+                        <input type="number" class="form-control" id="potenciais_clientes_conversados" name="potenciais_clientes_conversados" value="{{ questionnaire.potenciais_clientes_conversados or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="entrevistas_stakeholders" class="form-label">Quantas entrevistas foram realizadas com stakeholders?</label>
+                        <input type="number" class="form-control" id="entrevistas_stakeholders" name="entrevistas_stakeholders" value="{{ questionnaire.entrevistas_stakeholders or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="necessidades_clientes" class="form-label">Quais necessidades dos clientes sua solução atende?</label>
+                        <textarea class="form-control" id="necessidades_clientes" name="necessidades_clientes" rows="3">{{ questionnaire.necessidades_clientes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="solucao_portfolio_clientes" class="form-label">Sua solução se encaixa bem no portfólio dos clientes? Como?</label>
+                        <textarea class="form-control" id="solucao_portfolio_clientes" name="solucao_portfolio_clientes" rows="3">{{ questionnaire.solucao_portfolio_clientes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="segmentos_alvo" class="form-label">Quais são os segmentos-alvo? Descrever (ex.: tamanho, faturamento, localização, nacional/internacional)</label>
+                        <textarea class="form-control" id="segmentos_alvo" name="segmentos_alvo" rows="3">{{ questionnaire.segmentos_alvo or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="satisfacao_atual_necessidade" class="form-label">Como seus clientes atualmente satisfazem essa necessidade que sua empresa atende?</label>
+                        <textarea class="form-control" id="satisfacao_atual_necessidade" name="satisfacao_atual_necessidade" rows="3">{{ questionnaire.satisfacao_atual_necessidade or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 4: Estrutura e Operação -->
+                <div class="form-section {% if current_section == 'estrutura_operacao' %}active{% endif %}" id="estrutura_operacao">
+                    <h3 class="mb-4">4. Estrutura e Operação</h3>
+                    
+                    <div class="mb-3">
+                        <label for="estrutura_atual" class="form-label">Descreva a estrutura atual da empresa (áreas, organograma)</label>
+                        <textarea class="form-control" id="estrutura_atual" name="estrutura_atual" rows="3">{{ questionnaire.estrutura_atual or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="colaboradores_por_area" class="form-label">Quantos colaboradores/sócios por área?</label>
+                        <textarea class="form-control" id="colaboradores_por_area" name="colaboradores_por_area" rows="3">{{ questionnaire.colaboradores_por_area or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="competencias_experiencias" class="form-label">Quais são as principais competências e experiências da equipe?</label>
+                        <textarea class="form-control" id="competencias_experiencias" name="competencias_experiencias" rows="3">{{ questionnaire.competencias_experiencias or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="deficiencias_equipe" class="form-label">Existem deficiências na equipe? Como serão resolvidas?</label>
+                        <textarea class="form-control" id="deficiencias_equipe" name="deficiencias_equipe" rows="3">{{ questionnaire.deficiencias_equipe or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 5: Produto/Solução e Propriedade Intelectual -->
+                <div class="form-section {% if current_section == 'produto_solucao' %}active{% endif %}" id="produto_solucao">
+                    <h3 class="mb-4">5. Produto/Solução e Propriedade Intelectual</h3>
+                    
+                    <div class="mb-3">
+                        <label for="atributos_solucao" class="form-label">Quais os principais atributos da sua solução/produto?</label>
+                        <textarea class="form-control" id="atributos_solucao" name="atributos_solucao" rows="3">{{ questionnaire.atributos_solucao or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Seu produto gera resultados protegíveis (patentes, marcas, direitos autorais)?</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="propriedade_intelectual" id="propriedade_sim" value="Sim" {% if questionnaire.propriedade_intelectual == 'Sim' %}checked{% endif %}>
+                            <label class="form-check-label" for="propriedade_sim">Sim</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="propriedade_intelectual" id="propriedade_nao" value="Não" {% if questionnaire.propriedade_intelectual == 'Não' %}checked{% endif %}>
+                            <label class="form-check-label" for="propriedade_nao">Não</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="estrategia_propriedade_div" {% if questionnaire.propriedade_intelectual != 'Sim' %}style="display: none;"{% endif %}>
+                        <label for="estrategia_propriedade" class="form-label">Qual a estratégia para proteção da propriedade intelectual?</label>
+                        <textarea class="form-control" id="estrategia_propriedade" name="estrategia_propriedade" rows="3">{{ questionnaire.estrategia_propriedade or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 6: Concorrência e Estratégia de Mercado -->
+                <div class="form-section {% if current_section == 'concorrencia_estrategia' %}active{% endif %}" id="concorrencia_estrategia">
+                    <h3 class="mb-4">6. Concorrência e Estratégia de Mercado</h3>
+                    
+                    <div class="mb-3">
+                        <label for="concorrentes" class="form-label">Quais são os concorrentes diretos e indiretos?</label>
+                        <textarea class="form-control" id="concorrentes" name="concorrentes" rows="3">{{ questionnaire.concorrentes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="diferenciais_concorrentes" class="form-label">Quais os diferenciais da sua solução frente aos concorrentes?</label>
+                        <textarea class="form-control" id="diferenciais_concorrentes" name="diferenciais_concorrentes" rows="3">{{ questionnaire.diferenciais_concorrentes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="posicionamento_mercado" class="form-label">Qual o posicionamento da sua empresa no mercado?</label>
+                        <select class="form-select" id="posicionamento_mercado" name="posicionamento_mercado">
+                            <option value="" {% if not questionnaire.posicionamento_mercado %}selected{% endif %}>Selecione...</option>
+                            <option value="Operando atualmente" {% if questionnaire.posicionamento_mercado == 'Operando atualmente' %}selected{% endif %}>Operando atualmente</option>
+                            <option value="Ainda não opera, mas planeja" {% if questionnaire.posicionamento_mercado == 'Ainda não opera, mas planeja' %}selected{% endif %}>Ainda não opera, mas planeja</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricao_posicionamento" class="form-label">Descreva o posicionamento</label>
+                        <textarea class="form-control" id="descricao_posicionamento" name="descricao_posicionamento" rows="3">{{ questionnaire.descricao_posicionamento or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="barreiras_entrada" class="form-label">Quais são as barreiras de entrada no mercado? Como sua empresa pretende superá-las?</label>
+                        <textarea class="form-control" id="barreiras_entrada" name="barreiras_entrada" rows="3">{{ questionnaire.barreiras_entrada or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="riscos_mitigacoes" class="form-label">Quais os principais riscos identificados no negócio? E as soluções/mitigações?</label>
+                        <textarea class="form-control" id="riscos_mitigacoes" name="riscos_mitigacoes" rows="3">{{ questionnaire.riscos_mitigacoes or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 7: Modelo de Negócio e Fontes de Receita -->
+                <div class="form-section {% if current_section == 'modelo_receita' %}active{% endif %}" id="modelo_receita">
+                    <h3 class="mb-4">7. Modelo de Negócio e Fontes de Receita</h3>
+                    
+                    <div class="mb-3">
+                        <label for="fontes_receita" class="form-label">Como sua empresa gera ou pretende gerar receita?</label>
+                        <select class="form-select" id="fontes_receita" name="fontes_receita" multiple size="6">
+                            <option value="Vendas" {% if questionnaire.fontes_receita and 'Vendas' in questionnaire.fontes_receita %}selected{% endif %}>Vendas</option>
+                            <option value="Consultoria" {% if questionnaire.fontes_receita and 'Consultoria' in questionnaire.fontes_receita %}selected{% endif %}>Consultoria</option>
+                            <option value="Licenças" {% if questionnaire.fontes_receita and 'Licenças' in questionnaire.fontes_receita %}selected{% endif %}>Licenças</option>
+                            <option value="Contratos" {% if questionnaire.fontes_receita and 'Contratos' in questionnaire.fontes_receita %}selected{% endif %}>Contratos</option>
+                            <option value="Serviços recorrentes" {% if questionnaire.fontes_receita and 'Serviços recorrentes' in questionnaire.fontes_receita %}selected{% endif %}>Serviços recorrentes</option>
+                            <option value="Outros" {% if questionnaire.fontes_receita and 'Outros' in questionnaire.fontes_receita %}selected{% endif %}>Outros</option>
+                        </select>
+                        <small class="form-text text-muted">Segure Ctrl (ou Command no Mac) para selecionar múltiplas opções</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modelo_geracao_receita" class="form-label">Explique como seu modelo de negócios irá gerar receita a partir da inovação</label>
+                        <textarea class="form-control" id="modelo_geracao_receita" name="modelo_geracao_receita" rows="3">{{ questionnaire.modelo_geracao_receita or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 8: Projeções Financeiras -->
+                <div class="form-section {% if current_section == 'projecoes_financeiras' %}active{% endif %}" id="projecoes_financeiras">
+                    <h3 class="mb-4">8. Projeções Financeiras (5 anos)</h3>
+                    
+                    <div class="mb-3">
+                        <label for="tam_mercado_total" class="form-label">TAM – Mercado Total Disponível (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="tam_mercado_total" name="tam_mercado_total" value="{{ questionnaire.tam_mercado_total or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sam_mercado_alvo" class="form-label">SAM – Mercado Alvo Disponível (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="sam_mercado_alvo" name="sam_mercado_alvo" value="{{ questionnaire.sam_mercado_alvo or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="som_mercado_alcancavel" class="form-label">SOM – Mercado Alcançável (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="som_mercado_alcancavel" name="som_mercado_alcancavel" value="{{ questionnaire.som_mercado_alcancavel or '' }}">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="receita_ano1" class="form-label">Receita estimada no 1º ano (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="receita_ano1" name="receita_ano1" value="{{ questionnaire.receita_ano1 or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="receita_ano2" class="form-label">Receita estimada no 2º ano (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="receita_ano2" name="receita_ano2" value="{{ questionnaire.receita_ano2 or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="receita_ano3" class="form-label">Receita estimada no 3º ano (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="receita_ano3" name="receita_ano3" value="{{ questionnaire.receita_ano3 or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="receita_ano4" class="form-label">Receita estimada no 4º ano (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="receita_ano4" name="receita_ano4" value="{{ questionnaire.receita_ano4 or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="receita_ano5" class="form-label">Receita estimada no 5º ano (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="receita_ano5" name="receita_ano5" value="{{ questionnaire.receita_ano5 or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="custos_estimados" class="form-label">Custos fixos e variáveis estimados para os 5 anos</label>
+                        <textarea class="form-control" id="custos_estimados" name="custos_estimados" rows="3">{{ questionnaire.custos_estimados or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="justificativa_projecoes" class="form-label">Justificativa das projeções de receitas e custos</label>
+                        <textarea class="form-control" id="justificativa_projecoes" name="justificativa_projecoes" rows="3">{{ questionnaire.justificativa_projecoes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cronograma_financeiro" class="form-label">Cronograma físico-financeiro resumido</label>
+                        <textarea class="form-control" id="cronograma_financeiro" name="cronograma_financeiro" rows="3">{{ questionnaire.cronograma_financeiro or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Seção 9: Marketing, Comercial e Distribuição -->
+                <div class="form-section {% if current_section == 'marketing_comercial' %}active{% endif %}" id="marketing_comercial">
+                    <h3 class="mb-4">9. Marketing, Comercial e Distribuição</h3>
+                    
+                    <div class="mb-3">
+                        <label for="estrategias_marketing" class="form-label">Quais estratégias de marketing serão utilizadas?</label>
+                        <textarea class="form-control" id="estrategias_marketing" name="estrategias_marketing" rows="3">{{ questionnaire.estrategias_marketing or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="metodos_venda" class="form-label">Quais métodos de venda sua empresa pretende adotar?</label>
+                        <textarea class="form-control" id="metodos_venda" name="metodos_venda" rows="3">{{ questionnaire.metodos_venda or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="estrategia_insercao" class="form-label">Qual é a estratégia de inserção no mercado?</label>
+                        <textarea class="form-control" id="estrategia_insercao" name="estrategia_insercao" rows="3">{{ questionnaire.estrategia_insercao or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="estrategia_precificacao" class="form-label">Qual é sua estratégia de precificação?</label>
+                        <textarea class="form-control" id="estrategia_precificacao" name="estrategia_precificacao" rows="3">{{ questionnaire.estrategia_precificacao or '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="estrategias_distribuicao" class="form-label">Quais estratégias de distribuição, assistência técnica e pós-venda?</label>
+                        <textarea class="form-control" id="estrategias_distribuicao" name="estrategias_distribuicao" rows="3">{{ questionnaire.estrategias_distribuicao or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    {% if current_section != 'dados_gerais' %}
+                    <button type="submit" class="btn btn-secondary" name="next_action" value="prev">Anterior</button>
+                    {% else %}
+                    <div></div>
+                    {% endif %}
+                    
+                    <div>
+                        <button type="submit" class="btn btn-primary" name="next_action" value="save">Salvar</button>
+                        
+                        {% if current_section != 'marketing_comercial' %}
+                        <button type="submit" class="btn btn-success" name="next_action" value="next">Próximo</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success" name="next_action" value="review">Revisar e Finalizar</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar/ocultar campo de estratégia de propriedade intelectual
+        const propriedadeSim = document.getElementById('propriedade_sim');
+        const propriedadeNao = document.getElementById('propriedade_nao');
+        const estrategiaDiv = document.getElementById('estrategia_propriedade_div');
+        
+        if (propriedadeSim && propriedadeNao && estrategiaDiv) {
+            propriedadeSim.addEventListener('change', function() {
+                if (this.checked) {
+                    estrategiaDiv.style.display = 'block';
+                }
+            });
+            
+            propriedadeNao.addEventListener('change', function() {
+                if (this.checked) {
+                    estrategiaDiv.style.display = 'none';
+                }
+            });
+        }
+        
+        // Validação do formulário
+        const form = document.getElementById('diagnosticForm');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                const activeSection = document.querySelector('.form-section.active');
+                const requiredFields = activeSection.querySelectorAll('[required]');
+                
+                let isValid = true;
+                requiredFields.forEach(function(field) {
+                    if (!field.value.trim()) {
+                        isValid = false;
+                        field.classList.add('is-invalid');
+                    } else {
+                        field.classList.remove('is-invalid');
+                    }
+                });
+                
+                if (!isValid) {
+                    event.preventDefault();
+                    alert('Por favor, preencha todos os campos obrigatórios.');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

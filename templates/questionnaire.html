@@ -19,12 +19,11 @@
 <h1 class="mt-4">Questionário Financeiro - {{ company.name }}</h1>
 <p>Responda às perguntas abaixo para nos ajudar a entender melhor a situação financeira da sua empresa.</p>
 
-<form method="POST" action="{{ url_for('questionnaire_view', company_id=company.id) }}" id="questionnaireForm">
+<form method="POST" action="{{ url_for('questionnaire', company_id=company.id) }}" id="questionnaireForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
 
     <ul class="nav nav-tabs" id="questionnaireTabs" role="tablist">
-        {# Use questionnaire_template here as it holds the structure #}
-        {% for section in questionnaire_template.get('sections', []) %}
+        {% for section in template.sections %}
         <li class="nav-item" role="presentation">
             <button class="nav-link {% if loop.first %}active{% endif %}" id="{{ section.id }}-tab" data-bs-toggle="tab" data-bs-target="#{{ section.id }}" type="button" role="tab" aria-controls="{{ section.id }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ section.title }}</button>
         </li>
@@ -32,26 +31,23 @@
     </ul>
 
     <div class="tab-content card card-body mt-0 border-top-0 rounded-0 rounded-bottom" id="questionnaireTabContent">
-        {# Use questionnaire_template here as it holds the structure #}
-        {% for section in questionnaire_template.get('sections', []) %}
+        {% for section in template.sections %}
         <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ section.id }}" role="tabpanel" aria-labelledby="{{ section.id }}-tab">
             <h5 class="mb-3">{{ section.title }}</h5>
-            {% for question in section.get('questions', []) %}
+            {% for question in section.questions %}
             <div class="mb-3">
-                {# Use question.id for the name attribute to match how data is saved #}
-                <label for="{{ question.id }}" class="form-label">{{ question.label }}</label>
-                {% set current_value = existing_responses.get(question.id, '') %}
+                <label for="{{ section.id }}_{{ question.id }}" class="form-label">{{ question.label }}</label>
                 {% if question.type == 'textarea' %}
-                <textarea class="form-control" id="{{ question.id }}" name="{{ question.id }}" rows="3">{{ current_value }}</textarea>
+                <textarea class="form-control" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}" rows="3">{{ questionnaire.responses[section.id][question.id] if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] else '' }}</textarea>
                 {% elif question.type == 'select' %}
-                <select class="form-select" id="{{ question.id }}" name="{{ question.id }}">
+                <select class="form-select" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}">
                     <option value="">Selecione...</option>
                     {% for option in question.options %}
-                    <option value="{{ option }}" {% if current_value == option %}selected{% endif %}>{{ option }}</option>
+                    <option value="{{ option }}" {% if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] and questionnaire.responses[section.id][question.id] == option %}selected{% endif %}>{{ option }}</option>
                     {% endfor %}
                 </select>
                 {% else %}
-                <input type="{{ question.type }}" class="form-control" id="{{ question.id }}" name="{{ question.id }}" value="{{ current_value }}">
+                <input type="{{ question.type }}" class="form-control" id="{{ section.id }}_{{ question.id }}" name="{{ section.id }}_{{ question.id }}" value="{{ questionnaire.responses[section.id][question.id] if questionnaire and section.id in questionnaire.responses and question.id in questionnaire.responses[section.id] else '' }}">
                 {% endif %}
                 {% if question.tooltip %}
                 <small class="form-text text-muted">{{ question.tooltip }}</small>

@@ -3,8 +3,8 @@
 {% block title %}Valuation - {{ company.name }} - CFO as a Service{% endblock %}
 
 {% block head_extra %}
-<!-- Chart.js for graphs (Optional, if data becomes available) -->
-{# <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> #}
+<!-- Chart.js for graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .valuation-method-card {
         margin-bottom: 1.5rem;
@@ -15,68 +15,67 @@
 {% block content %}
 <h1 class="mt-4">Valuation - {{ company.name }}</h1>
 
-{# Use valuation_data passed from the updated app.py route #}
-{% if valuation_data and valuation_data.range_min != 'Não calculado' %}
+{% if valuation %}
     <div class="alert alert-info mt-3">
-        <strong>Status do Valuation:</strong> {{ valuation_data.status }}
+        <strong>Status do Valuation:</strong> {{ valuation.status }}
     </div>
 
     <div class="card mt-4">
         <div class="card-header">Estimativa de Valor</div>
         <div class="card-body text-center">
-            <h2 class="display-5">{{ valuation_data.range_min }} - {{ valuation_data.range_max }}</h2>
-            <p class="text-muted">Baseado em: {{ valuation_data.methods_used | join(', ') }}</p>
+            <h2 class="display-5">{{ valuation.range_min }} - {{ valuation.range_max }}</h2>
+            <p class="text-muted">Baseado em: {{ valuation.methods_used | join(', ') }}</p>
         </div>
     </div>
 
     <div class="card mt-4">
         <div class="card-header">Premissas Utilizadas</div>
         <div class="card-body">
-            <p>{{ valuation_data.assumptions }}</p>
+            <p>{{ valuation.assumptions }}</p>
         </div>
     </div>
 
-    {# Placeholder for more detailed methods/charts if implemented later #}
-    {#
     <h2 class="mt-4">Detalhes por Método (Exemplo)</h2>
     <div class="row">
+        <!-- Example: Discounted Cash Flow -->
         <div class="col-md-6">
             <div class="card valuation-method-card">
                 <div class="card-header">Fluxo de Caixa Descontado (Simulado)</div>
                 <div class="card-body">
                     <p>Valor Estimado: R$ 6.500.000</p>
+                    <p>Taxa de Desconto (WACC): 15%</p>
+                    <p>Taxa de Crescimento na Perpetuidade: 3%</p>
+                    <!-- Placeholder for sensitivity analysis chart -->
                     <canvas id="dcfSensitivityChart" height="150"></canvas>
                 </div>
             </div>
         </div>
+        <!-- Example: Market Multiples -->
         <div class="col-md-6">
             <div class="card valuation-method-card">
                 <div class="card-header">Múltiplos de Mercado (Simulado)</div>
                 <div class="card-body">
                     <p>Valor Estimado: R$ 7.000.000</p>
+                    <p>Múltiplo Utilizado: EBITDA (8x)</p>
+                    <p>Empresas Comparáveis: Empresa A, Empresa B, Empresa C</p>
+                    <!-- Placeholder for multiples comparison chart -->
                     <canvas id="multiplesChart" height="150"></canvas>
                 </div>
             </div>
         </div>
     </div>
-    #}
 
     <div class="card mt-2">
         <div class="card-header">Análise de Sensibilidade</div>
         <div class="card-body">
-            <p>{{ valuation_data.sensitivity_analysis }}</p>
+            <p>{{ valuation.sensitivity_analysis }}</p>
+            <!-- Detailed sensitivity analysis could be presented here -->
         </div>
     </div>
 
-{% elif valuation_data %}
-    {# Case where valuation_data exists but calculation failed (e.g., no faturamento) #}
-     <div class="alert alert-warning mt-4">
-        <strong>Status do Valuation:</strong> {{ valuation_data.status }}<br>
-        {{ valuation_data.assumptions }}
-    </div>
 {% else %}
     <div class="alert alert-warning mt-4">
-        O cálculo de valuation ainda não pôde ser gerado. Certifique-se de que o questionário foi preenchido com dados válidos (como Faturamento Anual).
+        O cálculo de valuation ainda não está disponível. Certifique-se de que o questionário financeiro foi preenchido.
     </div>
 {% endif %}
 
@@ -87,7 +86,73 @@
 {% endblock %}
 
 {% block scripts_extra %}
-{# Chart.js script removed as the basic calculation doesn't provide data for charts yet #}
-{# If adding charts later, ensure valuation_data provides necessary values #}
+{% if valuation %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Example DCF Sensitivity Chart (Bar)
+    const ctxDcf = document.getElementById('dcfSensitivityChart')?.getContext('2d');
+    if (ctxDcf) {
+        new Chart(ctxDcf, {
+            type: 'bar',
+            data: {
+                labels: ['-1% WACC', 'Base', '+1% WACC', '+1% Cresc.', '-1% Cresc.'],
+                datasets: [{
+                    label: 'Valuation (R$ Milhões)',
+                    data: [7.2, 6.5, 5.9, 7.0, 6.0], // Example data
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'M';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Example Multiples Chart (Bar)
+    const ctxMultiples = document.getElementById('multiplesChart')?.getContext('2d');
+    if (ctxMultiples) {
+        new Chart(ctxMultiples, {
+            type: 'bar',
+            data: {
+                labels: ['Empresa A', 'Empresa B', 'Empresa C', 'Sua Empresa'],
+                datasets: [{
+                    label: 'Múltiplo EBITDA',
+                    data: [8.5, 7.8, 9.0, 8.0], // Example data
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 

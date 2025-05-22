@@ -1,90 +1,104 @@
-/* General Styles */
-body {
-    overflow-x: hidden; /* Prevent horizontal scroll */
+/* Estilos para o formulário de diagnóstico financeiro */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
 }
 
-/* Sidebar Styles */
-#sidebar-wrapper {
-    min-height: 100vh;
-    margin-left: -15rem;
-    transition: margin 0.25s ease-out;
-}
-
-#sidebar-wrapper .sidebar-heading {
-    padding: 0.875rem 1.25rem;
-    font-size: 1.2rem;
-}
-
-#sidebar-wrapper .list-group {
-    width: 15rem;
-}
-
-#page-content-wrapper {
-    min-width: 100vw;
-}
-
-#wrapper.toggled #sidebar-wrapper {
-    margin-left: 0;
-}
-
-@media (min-width: 768px) {
-    #sidebar-wrapper {
-        margin-left: 0;
-    }
-
-    #page-content-wrapper {
-        min-width: 0;
-        width: 100%;
-    }
-
-    #wrapper.toggled #sidebar-wrapper {
-        margin-left: -15rem;
-    }
-}
-
-/* Custom Card Styles */
-.indicator-card {
-    border-left-width: 5px;
-    border-left-style: solid;
-    margin-bottom: 1rem;
-}
-
-.indicator-card.attention {
-    border-left-color: #ffc107; /* Yellow */
-}
-
-.indicator-card.critical {
-    border-left-color: #dc3545; /* Red */
-}
-
-.indicator-card:not(.attention):not(.critical) {
-     border-left-color: #0d6efd; /* Blue */
-}
-
-/* Drop Zone Styles */
-.drop-zone {
-    border: 2px dashed #ccc;
-    padding: 2rem;
+.step {
+    flex: 1;
     text-align: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-.drop-zone.dragover {
-    background-color: #e9ecef;
+    padding: 10px;
+    position: relative;
+    font-size: 0.9rem;
 }
 
-/* Questionnaire Tabs */
-.nav-tabs .nav-link.active {
+.step.active {
     font-weight: bold;
-    background-color: #e9ecef;
-    border-color: #dee2e6 #dee2e6 #fff;
-}
-.tab-pane {
-    padding-top: 1rem;
+    color: #0d6efd;
 }
 
-/* Utility */
-.text-danger {
-    color: #dc3545 !important;
+.step.completed {
+    color: #198754;
 }
 
+.step::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: -1;
+}
+
+.step:last-child::after {
+    display: none;
+}
+
+.step-number {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    margin-bottom: 5px;
+}
+
+.step.active .step-number {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.step.completed .step-number {
+    background-color: #198754;
+    color: white;
+    border-color: #198754;
+}
+
+.form-section {
+    display: none;
+}
+
+.form-section.active {
+    display: block;
+}
+
+.required-field::after {
+    content: " *";
+    color: red;
+}
+
+.section-card {
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #0d6efd;
+}
+
+.section-title {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 500;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.field-name {
+    font-weight: 500;
+    color: #495057;
+}
+
+.field-value {
+    margin-bottom: 0.5rem;
+}
+
+.empty-value {
+    color: #6c757d;
+    font-style: italic;
+}

@@ -14,13 +14,12 @@
         <div class="card mb-4">
             <div class="card-header">Questionário Financeiro</div>
             <div class="card-body">
-                {# Modificado para verificar diretamente o objeto 'questionnaire' #}
-                {% if questionnaire %}
+                {% if has_questionnaire %}
                     <p>O questionário financeiro foi preenchido.</p>
-                    <a href="{{ url_for('questionnaire_view', company_id=company.id) }}" class="btn btn-secondary"><i class="fas fa-edit me-2"></i>Editar Questionário</a>
+                    <a href="{{ url_for('questionnaire', company_id=company.id) }}" class="btn btn-secondary"><i class="fas fa-edit me-2"></i>Editar Questionário</a>
                 {% else %}
                     <p>O questionário financeiro ainda não foi preenchido.</p>
-                    <a href="{{ url_for('questionnaire_view', company_id=company.id) }}" class="btn btn-primary"><i class="fas fa-list-alt me-2"></i>Preencher Questionário</a>
+                    <a href="{{ url_for('questionnaire', company_id=company.id) }}" class="btn btn-primary"><i class="fas fa-list-alt me-2"></i>Preencher Questionário</a>
                 {% endif %}
             </div>
         </div>
@@ -35,7 +34,7 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-file-alt me-2"></i>
-                                <a href="{{ url_for('uploaded_file', filename=doc.stored_filename) }}" target="_blank">{{ doc.original_filename }}</a>
+                                <a href="{{ url_for('serve_upload', filename=doc.stored_filename) }}" target="_blank">{{ doc.original_filename }}</a>
                                 <small class="text-muted ms-2">({{ doc.document_type }})</small>
                             </div>
                             <span class="badge bg-{{ 'success' if doc.status == 'processed' else 'warning' }} rounded-pill">{{ doc.status }}</span>
@@ -54,16 +53,12 @@
             <div class="card-header">Análises</div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    {# Modificado para verificar diretamente 'questionnaire' e 'documents' #}
-                    <a href="{{ url_for('financial_diagnostic_view', company_id=company.id) }}" class="btn btn-info {% if not questionnaire and not documents %}disabled{% endif %}"><i class="fas fa-chart-line me-2"></i>Ver Diagnóstico Financeiro</a>
-                    {# Modificado para verificar diretamente 'questionnaire' #}
-                    <a href="{{ url_for('valuation_view', company_id=company.id) }}" class="btn btn-warning {% if not questionnaire %}disabled{% endif %}"><i class="fas fa-calculator me-2"></i>Calcular Valuation</a>
+                    <a href="{{ url_for('financial_diagnostic_route', company_id=company.id) }}" class="btn btn-info {% if not has_questionnaire and not documents %}disabled{% endif %}"><i class="fas fa-chart-line me-2"></i>Ver Diagnóstico Financeiro</a>
+                    <a href="{{ url_for('valuation_route', company_id=company.id) }}" class="btn btn-warning {% if not has_questionnaire %}disabled{% endif %}"><i class="fas fa-calculator me-2"></i>Calcular Valuation</a>
                 </div>
-                {# Modificado para verificar diretamente 'questionnaire' e 'documents' #}
-                {% if not questionnaire and not documents %}
+                {% if not has_questionnaire and not documents %}
                 <small class="text-muted mt-2 d-block">Preencha o questionário ou envie documentos para habilitar as análises.</small>
-                {# Modificado para verificar diretamente 'questionnaire' #}
-                {% elif not questionnaire %}
+                {% elif not has_questionnaire %}
                  <small class="text-muted mt-2 d-block">Preencha o questionário para habilitar o cálculo de valuation.</small>
                 {% endif %}
             </div>
