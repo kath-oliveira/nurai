@@ -682,6 +682,14 @@ def financial_diagnostic_view(company_id):
                 if isinstance(questions, dict):
                     # Adicionar todas as respostas ao dicionário principal
                     questionnaire_data.update(questions)
+                elif isinstance(questions, list):
+                    # Converter lista para dicionário se necessário
+                    app.logger.info(f"Convertendo lista para dicionário na seção {section_id}")
+                    for i, item in enumerate(questions):
+                        if isinstance(item, dict) and 'id' in item and 'value' in item:
+                            questionnaire_data[item['id']] = item['value']
+                        else:
+                            questionnaire_data[f"{section_id}_{i}"] = item
                 else:
                     # Caso a estrutura seja diferente, tentar usar diretamente
                     questionnaire_data[section_id] = questions
