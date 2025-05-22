@@ -350,21 +350,24 @@ def reset_password(token):
         user.reset_token_expiry = None
         try:
             db.session.commit()
-            flash("Sua senha foi redefinida com sucesso! Faça login.", "success")
+            flash("Sua senha foi redefinida com sucesso! Faça login com a nova senha.", "success")
             return redirect(url_for("login"))
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Erro ao redefinir senha para {user.email}: {e}")
-            flash("Ocorreu um erro ao redefinir sua senha. Tente novamente.", "danger")
+            app.logger.error(f"Erro ao redefinir senha para usuário {user.id}: {e}")
+            flash("Ocorreu um erro ao tentar redefinir sua senha. Tente novamente.", "danger")
             csrf_token = security_manager.generate_csrf_token()
             return render_template("reset_password.html", token=token, csrf_token=csrf_token)
 
     csrf_token = security_manager.generate_csrf_token()
     return render_template("reset_password.html", token=token, csrf_token=csrf_token)
 
-@app.route("/delete-account", methods=["GET", "POST"])
+@app.route("/delete-account", methods=["GET", "POST"], endpoint="delete_account")
 @login_required
 def delete_account():
+    user_id = session["user_id"]
+    user = User.query.get(user_id)
+
     if request.method == "POST":
         # Verificar token CSRF
         csrf_token = request.form.get("csrf_token")
@@ -372,29 +375,35 @@ def delete_account():
             flash("Erro de validação do formulário. Tente novamente.", "danger")
             return redirect(url_for("delete_account"))
 
-        user_id = session.get("user_id")
-        user = User.query.get(user_id)
+        password = request.form.get("password")
+        if not password:
+            flash("Por favor, digite sua senha para confirmar a exclusão da conta.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("delete_account.html", csrf_token=csrf_token)
 
-        if user:
-            try:
-                db.session.delete(user)
-                db.session.commit()
-                session.clear()
-                flash("Sua conta foi excluída com sucesso.", "success")
-                return redirect(url_for("index"))
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Erro ao excluir conta do usuário {user_id}: {e}")
-                flash("Ocorreu um erro ao tentar excluir sua conta. Tente novamente.", "danger")
-        else:
-            flash("Usuário não encontrado.", "danger")
+        if not security_manager.check_password(user.password, password):
+            flash("Senha incorreta. Tente novamente.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("delete_account.html", csrf_token=csrf_token)
+
+        try:
+            # Excluir usuário (e todas as empresas, documentos e questionários relacionados via cascade)
+            db.session.delete(user)
+            db.session.commit()
             session.clear()
-            return redirect(url_for("login"))
+            flash("Sua conta foi excluída com sucesso.", "success")
+            return redirect(url_for("index"))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao excluir usuário {user_id}: {e}")
+            flash("Ocorreu um erro ao tentar excluir sua conta. Tente novamente mais tarde.", "danger")
+            csrf_token = security_manager.generate_csrf_token()
+            return render_template("delete_account.html", csrf_token=csrf_token)
 
     csrf_token = security_manager.generate_csrf_token()
     return render_template("delete_account.html", csrf_token=csrf_token)
 
-# Rotas principais da aplicação (Versão Completa)
+# Rotas principais
 @app.route("/")
 def index():
     if "user_id" in session:
@@ -447,7 +456,7 @@ def add_company():
         try:
             db.session.add(new_company)
             db.session.commit()
-            flash(f"Empresa ", "success")
+            flash(f"Empresa {name} adicionada com sucesso!", "success")
             return redirect(url_for("dashboard"))
         except Exception as e:
             db.session.rollback()
@@ -481,7 +490,15 @@ def questionnaire_view(company_id):
     company = Company.query.filter_by(id=company_id, user_id=user_id).first_or_404()
     questionnaire_template = QuestionnaireTemplate.get_template()
     existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
-    existing_responses = json.loads(existing_questionnaire.responses) if existing_questionnaire else {}
+    
+    # Correção: Garantir que existing_responses seja sempre um dicionário, mesmo se existing_questionnaire for None
+    existing_responses = {}
+    if existing_questionnaire and existing_questionnaire.responses:
+        try:
+            existing_responses = json.loads(existing_questionnaire.responses)
+        except json.JSONDecodeError:
+            app.logger.error(f"Erro ao decodificar JSON das respostas para empresa {company_id}")
+            existing_responses = {}
 
     if request.method == "POST":
         # Verificar token CSRF
@@ -490,30 +507,61 @@ def questionnaire_view(company_id):
             flash("Erro de validação do formulário. Tente novamente.", "danger")
             return redirect(url_for("questionnaire_view", company_id=company_id))
 
+        # Coletar todas as respostas do formulário
         responses = {}
         for section in questionnaire_template.get("sections", []):
+            section_id = section.get("id", "")
+            responses[section_id] = {}
+            
             for question in section.get("questions", []):
-                q_id = question["id"]
-                responses[q_id] = request.form.get(q_id)
+                q_id = question.get("id", "")
+                if q_id:
+                    # Obter o valor do formulário
+                    value = request.form.get(q_id, "")
+                    # Armazenar no dicionário de respostas
+                    responses[section_id][q_id] = value
 
-        responses_json = json.dumps(responses)
+        # Serializar para JSON
+        try:
+            responses_json = json.dumps(responses)
+        except Exception as e:
+            app.logger.error(f"Erro ao serializar respostas para JSON: {e}")
+            flash("Ocorreu um erro ao processar as respostas. Tente novamente.", "danger")
+            return render_template(
+                "questionnaire.html",
+                company=company,
+                questionnaire_template=questionnaire_template,
+                existing_responses=existing_responses,
+                csrf_token=csrf_token
+            )
 
         try:
             if existing_questionnaire:
+                # Atualizar questionário existente
                 existing_questionnaire.responses = responses_json
                 existing_questionnaire.updated_at = datetime.utcnow()
+                app.logger.info(f"Atualizando questionário existente para empresa {company_id}")
             else:
+                # Criar novo questionário
                 new_questionnaire = Questionnaire(company_id=company_id, responses=responses_json)
                 db.session.add(new_questionnaire)
+                app.logger.info(f"Criando novo questionário para empresa {company_id}")
+            
+            # Commit das alterações
             db.session.commit()
             flash("Questionário salvo com sucesso!", "success")
+            
+            # Redirecionar para a página de detalhes da empresa
             return redirect(url_for("company_detail", company_id=company_id))
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Erro ao salvar questionário para empresa {company_id}: {e}")
             flash("Ocorreu um erro ao tentar salvar o questionário. Tente novamente.", "danger")
 
+    # Gerar token CSRF para o formulário
     csrf_token = security_manager.generate_csrf_token()
+    
+    # Renderizar o template com os dados necessários
     return render_template(
         "questionnaire.html",
         company=company,
@@ -567,7 +615,7 @@ def upload_document(company_id):
                 db.session.add(new_document)
                 db.session.commit()
 
-                flash(f"Arquivo ", "success")
+                flash(f"Arquivo {original_filename} enviado com sucesso!", "success")
 
                 # Opcional: Iniciar processamento assíncrono aqui
                 # process_document_async(new_document.id)
@@ -619,13 +667,40 @@ def financial_diagnostic_view(company_id):
     questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
     documents = Document.query.filter_by(company_id=company_id, status="Processado").all()
 
-    questionnaire_data = json.loads(questionnaire.responses) if questionnaire else {}
-    document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
+    # Inicializar dados vazios
+    questionnaire_data = {}
+    document_data = []
+    
+    # Processar dados do questionário se existir
+    if questionnaire and questionnaire.responses:
+        try:
+            # Deserializar JSON para dicionário
+            responses_dict = json.loads(questionnaire.responses)
+            
+            # Extrair respostas de todas as seções para um único dicionário plano
+            for section_id, questions in responses_dict.items():
+                if isinstance(questions, dict):
+                    # Adicionar todas as respostas ao dicionário principal
+                    questionnaire_data.update(questions)
+                else:
+                    # Caso a estrutura seja diferente, tentar usar diretamente
+                    questionnaire_data[section_id] = questions
+            
+            app.logger.info(f"Dados do questionário processados para empresa {company_id}")
+        except json.JSONDecodeError:
+            app.logger.error(f"Erro ao decodificar JSON das respostas para empresa {company_id}")
+    
+    # Processar dados dos documentos se existirem
+    for doc in documents:
+        if doc.extracted_data:
+            try:
+                doc_data = json.loads(doc.extracted_data)
+                document_data.append(doc_data)
+            except json.JSONDecodeError:
+                app.logger.error(f"Erro ao decodificar JSON do documento {doc.id}")
 
-    # Gerar diagnóstico
-    # Correção: Passando questionnaire_data (dicionário) como primeiro parâmetro
-    # e document_data (lista) como segundo parâmetro
-    diagnostic = financial_diagnostic.generate_diagnostic(document_data, questionnaire_data)
+    # Gerar diagnóstico com os dados processados
+    diagnostic = financial_diagnostic.generate_diagnostic(questionnaire_data, document_data)
 
     return render_template("financial_diagnostic.html", company=company, diagnostic=diagnostic)
 
@@ -639,13 +714,40 @@ def valuation_view(company_id):
     questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
     documents = Document.query.filter_by(company_id=company_id, status="Processado").all()
 
-    questionnaire_data = json.loads(questionnaire.responses) if questionnaire else {}
-    document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
+    # Inicializar dados vazios
+    questionnaire_data = {}
+    document_data = []
+    
+    # Processar dados do questionário se existir
+    if questionnaire and questionnaire.responses:
+        try:
+            # Deserializar JSON para dicionário
+            responses_dict = json.loads(questionnaire.responses)
+            
+            # Extrair respostas de todas as seções para um único dicionário plano
+            for section_id, questions in responses_dict.items():
+                if isinstance(questions, dict):
+                    # Adicionar todas as respostas ao dicionário principal
+                    questionnaire_data.update(questions)
+                else:
+                    # Caso a estrutura seja diferente, tentar usar diretamente
+                    questionnaire_data[section_id] = questions
+            
+            app.logger.info(f"Dados do questionário processados para valuation da empresa {company_id}")
+        except json.JSONDecodeError:
+            app.logger.error(f"Erro ao decodificar JSON das respostas para valuation da empresa {company_id}")
+    
+    # Processar dados dos documentos se existirem
+    for doc in documents:
+        if doc.extracted_data:
+            try:
+                doc_data = json.loads(doc.extracted_data)
+                document_data.append(doc_data)
+            except json.JSONDecodeError:
+                app.logger.error(f"Erro ao decodificar JSON do documento {doc.id} para valuation")
 
-    # Calcular valuation
-    # Correção: Passando questionnaire_data (dicionário) como primeiro parâmetro
-    # e document_data (lista) como segundo parâmetro
-    valuation = valuation_calculator.calculate_valuation(document_data, questionnaire_data)
+    # Calcular valuation com os dados processados
+    valuation = valuation_calculator.calculate_valuation(questionnaire_data, document_data)
 
     return render_template("valuation.html", company=company, valuation=valuation)
 
@@ -671,4 +773,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     # debug=False é importante para produção no Render
     app.run(debug=False, host="0.0.0.0", port=port)
-
