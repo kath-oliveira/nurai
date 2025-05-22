@@ -623,9 +623,11 @@ def financial_diagnostic_view(company_id):
     document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
 
     # Gerar diagnóstico
-    diagnostic_data = financial_diagnostic.generate_diagnostic(questionnaire_data, document_data)
+    # Correção: Passando questionnaire_data (dicionário) como primeiro parâmetro
+    # e document_data (lista) como segundo parâmetro
+    diagnostic = financial_diagnostic.generate_diagnostic(document_data, questionnaire_data)
 
-    return render_template("financial_diagnostic.html", company=company, diagnostic_data=diagnostic_data)
+    return render_template("financial_diagnostic.html", company=company, diagnostic=diagnostic)
 
 @app.route("/company/<int:company_id>/valuation")
 @login_required
@@ -641,9 +643,11 @@ def valuation_view(company_id):
     document_data = [json.loads(doc.extracted_data) for doc in documents if doc.extracted_data]
 
     # Calcular valuation
-    valuation_data = valuation_calculator.calculate_valuation(questionnaire_data, document_data)
+    # Correção: Passando questionnaire_data (dicionário) como primeiro parâmetro
+    # e document_data (lista) como segundo parâmetro
+    valuation = valuation_calculator.calculate_valuation(document_data, questionnaire_data)
 
-    return render_template("valuation.html", company=company, valuation_data=valuation_data)
+    return render_template("valuation.html", company=company, valuation=valuation)
 
 # Handlers de erro
 @app.errorhandler(404)
