@@ -1,6 +1,6 @@
 """
 Processamento de documentos financeiros, diagnóstico e valuation.
-Implementação de cálculos reais para o MVP.
+Implementação de cálculos reais para o MVP com dashboard visual.
 """
 
 import os
@@ -45,41 +45,235 @@ class FinancialDiagnostic:
         """Gera um diagnóstico financeiro com base nas respostas do questionário."""
         logger.info("Gerando diagnóstico financeiro...")
         
-        # Inicializa o diagnóstico com valores padrão
-        diagnostic = {
-            "status": "Baseado nas respostas do questionário",
-            "summary": "Análise inicial baseada nas informações fornecidas.",
-            "recommendations": [],
-            "indicators": {
-                "rentabilidade": self._calculate_rentability_score(questionnaire_data),
-                "liquidez": self._calculate_liquidity_score(questionnaire_data),
-                "endividamento": self._calculate_debt_score(questionnaire_data),
-                "eficiencia": self._calculate_efficiency_score(questionnaire_data),
-                "crescimento": self._calculate_growth_score(questionnaire_data)
-            },
-            "overall_score": 0  # Será calculado abaixo
-        }
+        # Extrai dados básicos do questionário
+        try:
+            # Dados financeiros
+            receita_ano1 = float(questionnaire_data.get("receita_ano1", 0) or 0)
+            receita_ano2 = float(questionnaire_data.get("receita_ano2", 0) or 0)
+            receita_ano3 = float(questionnaire_data.get("receita_ano3", 0) or 0)
+            receita_ano4 = float(questionnaire_data.get("receita_ano4", 0) or 0)
+            receita_ano5 = float(questionnaire_data.get("receita_ano5", 0) or 0)
+            
+            custos_ano1 = float(questionnaire_data.get("custos_ano1", 0) or 0)
+            custos_ano2 = float(questionnaire_data.get("custos_ano2", 0) or 0)
+            custos_ano3 = float(questionnaire_data.get("custos_ano3", 0) or 0)
+            custos_ano4 = float(questionnaire_data.get("custos_ano4", 0) or 0)
+            custos_ano5 = float(questionnaire_data.get("custos_ano5", 0) or 0)
+            
+            # Dados operacionais
+            num_funcionarios = int(questionnaire_data.get("num_funcionarios", 0) or 0)
+            
+            # Dados de mercado e modelo de negócio
+            setor_atuacao = questionnaire_data.get("setor_atuacao", "")
+            modelo_negocios = questionnaire_data.get("modelo_negocios", "")
+            principais_produtos = questionnaire_data.get("principais_produtos", "")
+            
+            # Estimativa de custos fixos vs variáveis (padrão se não informado)
+            custos_fixos_pct = float(questionnaire_data.get("custos_fixos_pct", 60) or 60)
+            custos_variaveis_pct = 100 - custos_fixos_pct
+            
+            # Estimativa de TAM/SAM/SOM
+            tam_valor = float(questionnaire_data.get("tam_valor", 0) or 0)
+            sam_valor = float(questionnaire_data.get("sam_valor", 0) or 0)
+            som_valor = float(questionnaire_data.get("som_valor", 0) or 0)
+            
+            # Principais riscos
+            principais_riscos = questionnaire_data.get("principais_riscos", "Concorrência")
+            
+        except Exception as e:
+            logger.error(f"Erro ao extrair dados do questionário: {e}")
+            # Valores padrão em caso de erro
+            receita_ano1 = receita_ano2 = receita_ano3 = receita_ano4 = receita_ano5 = 0
+            custos_ano1 = custos_ano2 = custos_ano3 = custos_ano4 = custos_ano5 = 0
+            num_funcionarios = 0
+            setor_atuacao = modelo_negocios = principais_produtos = ""
+            custos_fixos_pct = 60
+            custos_variaveis_pct = 40
+            tam_valor = sam_valor = som_valor = 0
+            principais_riscos = "Concorrência"
+        
+        # Calcula indicadores financeiros
+        indicators = self._calculate_financial_indicators(questionnaire_data)
         
         # Calcula a pontuação geral
         scores = [
-            diagnostic["indicators"]["rentabilidade"]["score"],
-            diagnostic["indicators"]["liquidez"]["score"],
-            diagnostic["indicators"]["endividamento"]["score"],
-            diagnostic["indicators"]["eficiencia"]["score"],
-            diagnostic["indicators"]["crescimento"]["score"]
+            indicators["rentabilidade"]["score"],
+            indicators["liquidez"]["score"],
+            indicators["endividamento"]["score"],
+            indicators["eficiencia"]["score"],
+            indicators["crescimento"]["score"]
         ]
         
         valid_scores = [s for s in scores if s is not None]
-        if valid_scores:
-            diagnostic["overall_score"] = round(sum(valid_scores) / len(valid_scores), 1)
+        overall_score = round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else 0
+        
+        # Determina a classificação de saúde financeira
+        health_status, health_color = self._get_health_status(overall_score)
+        
+        # Calcula KPIs para o dashboard
+        kpis = self._calculate_dashboard_kpis(questionnaire_data)
+        
+        # Prepara dados para gráficos
+        chart_data = self._prepare_chart_data(questionnaire_data)
         
         # Gera recomendações com base nos indicadores
-        diagnostic["recommendations"] = self._generate_recommendations(diagnostic["indicators"])
+        recommendations = self._generate_recommendations(indicators)
         
         # Gera o resumo com base na pontuação geral
-        diagnostic["summary"] = self._generate_summary(diagnostic["overall_score"])
+        summary = self._generate_summary(overall_score)
+        
+        # Monta o diagnóstico completo
+        diagnostic = {
+            "status": "Baseado nas respostas do questionário",
+            "summary": summary,
+            "recommendations": recommendations,
+            "indicators": indicators,
+            "overall_score": overall_score,
+            
+            # Dados para o dashboard visual
+            "dashboard": {
+                "health_status": health_status,
+                "health_color": health_color,
+                "kpis": kpis,
+                "chart_data": chart_data,
+                
+                # Informações de negócio
+                "business_info": {
+                    "modelo_negocios": modelo_negocios or "Venda direta",
+                    "principais_produtos": principais_produtos or "Vendas de produtos",
+                    "principais_riscos": principais_riscos,
+                    "setor_atuacao": setor_atuacao,
+                    "num_funcionarios": num_funcionarios,
+                    "produtividade_media": kpis["produtividade_media"]
+                },
+                
+                # Dados de mercado
+                "market_data": {
+                    "tam_valor": self._format_currency(tam_valor) if tam_valor > 0 else "Não informado",
+                    "sam_valor": self._format_currency(sam_valor) if sam_valor > 0 else "Não informado",
+                    "som_valor": self._format_currency(som_valor) if som_valor > 0 else "Não informado",
+                    "tam_pct": 100,
+                    "sam_pct": round((sam_valor / tam_valor) * 100 if tam_valor > 0 and sam_valor > 0 else 60),
+                    "som_pct": round((som_valor / tam_valor) * 100 if tam_valor > 0 and som_valor > 0 else 30)
+                },
+                
+                # Estrutura de custos
+                "cost_structure": {
+                    "fixos_pct": custos_fixos_pct,
+                    "variaveis_pct": custos_variaveis_pct
+                }
+            }
+        }
         
         return diagnostic
+    
+    def _calculate_financial_indicators(self, data):
+        """Calcula todos os indicadores financeiros."""
+        return {
+            "rentabilidade": self._calculate_rentability_score(data),
+            "liquidez": self._calculate_liquidity_score(data),
+            "endividamento": self._calculate_debt_score(data),
+            "eficiencia": self._calculate_efficiency_score(data),
+            "crescimento": self._calculate_growth_score(data)
+        }
+    
+    def _calculate_dashboard_kpis(self, data):
+        """Calcula os KPIs principais para o dashboard."""
+        try:
+            # Extrai dados relevantes
+            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+            receita_ano5 = float(data.get("receita_ano5", 0) or 0)
+            custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+            num_funcionarios = int(data.get("num_funcionarios", 0) or 0)
+            
+            # Calcula margem operacional
+            margem_operacional = round(((receita_ano1 - custos_ano1) / receita_ano1) * 100, 1) if receita_ano1 > 0 else 0
+            
+            # Calcula CAGR
+            cagr = round((math.pow(receita_ano5 / receita_ano1, 1/4) - 1) * 100, 1) if receita_ano1 > 0 and receita_ano5 > 0 else 0
+            
+            # Calcula produtividade média
+            produtividade_media = round(receita_ano1 / num_funcionarios) if num_funcionarios > 0 else 0
+            
+            # Estrutura de custos (padrão se não informado)
+            custos_fixos_pct = float(data.get("custos_fixos_pct", 60) or 60)
+            
+            return {
+                "faturamento_anual": receita_ano1,
+                "faturamento_anual_formatado": self._format_currency(receita_ano1),
+                "margem_operacional": margem_operacional,
+                "crescimento_projetado": cagr,
+                "estrutura_custos": custos_fixos_pct,
+                "produtividade_media": produtividade_media,
+                "produtividade_media_formatada": self._format_currency(produtividade_media)
+            }
+        except Exception as e:
+            logger.error(f"Erro ao calcular KPIs do dashboard: {e}")
+            return {
+                "faturamento_anual": 0,
+                "faturamento_anual_formatado": "R$ 0",
+                "margem_operacional": 0,
+                "crescimento_projetado": 0,
+                "estrutura_custos": 60,
+                "produtividade_media": 0,
+                "produtividade_media_formatada": "R$ 0"
+            }
+    
+    def _prepare_chart_data(self, data):
+        """Prepara dados para os gráficos do dashboard."""
+        try:
+            # Extrai dados de receita e custos
+            receitas = [
+                float(data.get("receita_ano1", 0) or 0),
+                float(data.get("receita_ano2", 0) or 0),
+                float(data.get("receita_ano3", 0) or 0),
+                float(data.get("receita_ano4", 0) or 0),
+                float(data.get("receita_ano5", 0) or 0)
+            ]
+            
+            custos = [
+                float(data.get("custos_ano1", 0) or 0),
+                float(data.get("custos_ano2", 0) or 0),
+                float(data.get("custos_ano3", 0) or 0),
+                float(data.get("custos_ano4", 0) or 0),
+                float(data.get("custos_ano5", 0) or 0)
+            ]
+            
+            # Se não houver dados suficientes, cria dados de exemplo
+            if sum(receitas) == 0:
+                receitas = [1000000, 1200000, 1500000, 1750000, 2000000]
+                custos = [800000, 900000, 1100000, 1200000, 1300000]
+            
+            # Estrutura de custos (padrão se não informado)
+            custos_fixos_pct = float(data.get("custos_fixos_pct", 60) or 60)
+            custos_variaveis_pct = 100 - custos_fixos_pct
+            
+            return {
+                "receitas": receitas,
+                "custos": custos,
+                "anos": ["Ano 1", "Ano 2", "Ano 3", "Ano 4", "Ano 5"],
+                "custos_fixos_pct": custos_fixos_pct,
+                "custos_variaveis_pct": custos_variaveis_pct
+            }
+        except Exception as e:
+            logger.error(f"Erro ao preparar dados para gráficos: {e}")
+            # Dados de exemplo em caso de erro
+            return {
+                "receitas": [1000000, 1200000, 1500000, 1750000, 2000000],
+                "custos": [800000, 900000, 1100000, 1200000, 1300000],
+                "anos": ["Ano 1", "Ano 2", "Ano 3", "Ano 4", "Ano 5"],
+                "custos_fixos_pct": 60,
+                "custos_variaveis_pct": 40
+            }
+    
+    def _get_health_status(self, score):
+        """Determina o status de saúde financeira com base na pontuação geral."""
+        if score >= 7:
+            return "Saudável", "success"  # Verde
+        elif score >= 4:
+            return "Estável", "warning"   # Amarelo
+        else:
+            return "Atenção", "danger"    # Vermelho
     
     def _calculate_rentability_score(self, data):
         """Calcula o score de rentabilidade."""
@@ -373,7 +567,7 @@ class FinancialDiagnostic:
         if indicators["rentabilidade"]["score"] is not None:
             if indicators["rentabilidade"]["score"] < 5:
                 recommendations.append("Revisar estrutura de custos e política de preços para melhorar margens.")
-            if indicators["rentabilidade"]["tendencia"] == "decrescente":
+            if indicators["rentabilidade"].get("tendencia") == "decrescente":
                 recommendations.append("Investigar causas da queda de rentabilidade e implementar ações corretivas.")
         
         # Recomendações para liquidez
@@ -407,6 +601,20 @@ class FinancialDiagnostic:
             return "A empresa apresenta indicadores financeiros preocupantes, necessitando de ações corretivas imediatas."
         else:
             return "Não foi possível gerar um diagnóstico completo devido à insuficiência de dados."
+    
+    def _format_currency(self, value):
+        """Formata um valor monetário."""
+        if value is None or value == 0:
+            return "R$ 0"
+            
+        if value >= 1_000_000_000:  # Bilhões
+            return f"R$ {value/1_000_000_000:.2f} bilhões"
+        elif value >= 1_000_000:  # Milhões
+            return f"R$ {value/1_000_000:.2f} milhões"
+        elif value >= 1_000:  # Milhares
+            return f"R$ {value/1_000:.2f} mil"
+        else:
+            return f"R$ {value:.2f}"
 
 
 class ValuationCalculator:
