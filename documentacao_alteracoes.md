@@ -2,41 +2,84 @@
 
 ## Problema Identificado
 
-Após análise dos logs e do código-fonte, foi identificado o seguinte problema:
+Após análise dos logs e do código-fonte, foram identificados os seguintes problemas:
 
-- Erro recorrente: `'list' object has no attribute 'get'`
-- Localização: Funções de processamento de dados do questionário e dashboard
-- Causa: Os dados do questionário estavam sendo salvos corretamente como JSON, mas durante a recuperação e processamento, a estrutura esperada era um dicionário, porém em alguns casos estava sendo tratada como lista.
+1. O sistema não estava salvando corretamente os dados digitados pelos usuários
+2. O dashboard não estava calculando e exibindo corretamente os dados
+3. O fluxo de dados entre o formulário, banco de dados e processamento estava inconsistente
+
+## Causa Raiz
+
+A causa raiz do problema estava na estrutura de dados utilizada para salvar e recuperar as respostas do questionário:
+
+- O formulário HTML esperava um dicionário plano com chaves diretas (ex: `receita_ano1`)
+- O código salvava as respostas em um dicionário aninhado por seção (ex: `{"projecoes_financeiras": {"receita_ano1": valor}}`)
+- As funções de cálculo esperavam um dicionário plano com chaves diretas
+
+Esta inconsistência fazia com que os dados não fossem corretamente recuperados para exibição no formulário e para os cálculos do dashboard.
 
 ## Solução Implementada
 
-Foi implementada uma correção na função de processamento dos dados do questionário para garantir que, independentemente do formato em que os dados são salvos, eles sejam sempre convertidos para um dicionário plano antes de serem utilizados nas funções de cálculo e exibição no dashboard.
+Foi implementada uma solução simplificada que garante consistência em todo o fluxo de dados:
 
-### Alterações Específicas:
+1. **Salvamento de Dados**: Modificado para salvar todas as respostas em um dicionário plano, usando diretamente o ID da questão como chave
+   ```python
+   # Antes
+   responses = {}
+   for section in questionnaire_template.get("sections", []):
+       section_id = section.get("id", "")
+       responses[section_id] = {}
+       for question in section.get("questions", []):
+           q_id = question.get("id", "")
+           responses[section_id][q_id] = value
+   
+   # Depois
+   responses = {}
+   for section in questionnaire_template.get("sections", []):
+       for question in section.get("questions", []):
+           q_id = question.get("id", "")
+           responses[q_id] = value
+   ```
 
-1. **Modificação na rota `financial_diagnostic_view` no arquivo `app.py`**:
-   - Adicionada lógica para detectar e converter estruturas de lista para dicionário
-   - Implementado tratamento para diferentes formatos de dados (dicionário, lista, ou outros)
-   - Adicionados logs para rastreamento da conversão
+2. **Recuperação de Dados**: Simplificada para usar diretamente o dicionário plano de respostas
+   ```python
+   # Antes
+   responses_dict = json.loads(questionnaire.responses)
+   for section_id, questions in responses_dict.items():
+       if isinstance(questions, dict):
+           questionnaire_data.update(questions)
+       # ... lógica complexa de conversão
+   
+   # Depois
+   questionnaire_data = json.loads(questionnaire.responses)
+   ```
 
-2. **Tratamento de Estruturas de Dados**:
-   - Quando uma seção contém uma lista, cada item é convertido para uma entrada no dicionário
-   - Para itens de lista que são dicionários com 'id' e 'value', esses valores são extraídos corretamente
-   - Para outros tipos de itens, são geradas chaves únicas baseadas no nome da seção
+3. **Carregamento para o Formulário**: Modificado para usar diretamente as respostas como dicionário plano
+   ```python
+   # Antes - estrutura aninhada complexa
+   existing_responses = {}
+   # ... lógica complexa de extração
+   
+   # Depois - dicionário plano direto
+   existing_responses = json.loads(existing_questionnaire.responses)
+   ```
 
 ## Benefícios da Solução
 
-1. **Robustez**: O sistema agora é capaz de lidar com diferentes estruturas de dados sem falhar
-2. **Compatibilidade**: Mantém compatibilidade com dados existentes sem necessidade de migração
-3. **Diagnóstico**: Logs adicionais facilitam a identificação de problemas futuros
-4. **Experiência do Usuário**: O dashboard agora exibe corretamente todos os dados processados
+1. **Simplicidade**: Fluxo de dados direto e consistente em todo o sistema
+2. **Confiabilidade**: Eliminação de conversões complexas que podiam falhar
+3. **Manutenibilidade**: Código mais simples e fácil de entender
+4. **Desempenho**: Menos processamento necessário para manipular os dados
 
-## Recomendações Futuras
+## Validação
 
-1. **Padronização de Dados**: Considerar a padronização do formato de armazenamento dos dados do questionário para evitar necessidade de conversões
-2. **Validação de Entrada**: Implementar validação mais rigorosa dos dados antes do salvamento
-3. **Testes Automatizados**: Desenvolver testes para garantir que as funções de processamento lidem corretamente com diferentes estruturas de dados
+A solução foi validada garantindo que:
+
+1. Os dados inseridos no formulário são salvos corretamente no banco de dados
+2. Os dados salvos são recuperados corretamente para edição no formulário
+3. Os dados são processados corretamente para exibição no dashboard
+4. Os cálculos financeiros utilizam os valores reais inseridos pelo usuário
 
 ## Conclusão
 
-A correção implementada resolve o problema de salvamento e processamento dos dados do usuário, garantindo que o dashboard funcione corretamente. O sistema agora é mais robusto e capaz de lidar com diferentes formatos de dados sem falhar.
+A solução implementada resolve o problema de forma simples e direta, garantindo que o sistema atenda aos requisitos mínimos do MVP: salvar corretamente os dados digitados pelos usuários e realizar os cálculos necessários para o dashboard.
