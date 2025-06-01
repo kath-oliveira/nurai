@@ -22,11 +22,19 @@ automacao_financeira_mvp/
 ├── app.py                  # Aplicativo Flask principal
 ├── document_processor.py   # Processamento de documentos e diagnóstico financeiro
 ├── questionnaire_storage.py # Template e armazenamento do questionário
+├── test_diagnostic_mvp.py  # Testes automatizados para diagnóstico financeiro
+├── test_results_mvp.json   # Resultados dos testes automatizados
+├── build_command.sh        # Comando de build para o Render.com
+├── start_command.sh        # Comando de start para o Render.com
 ├── data/                   # Diretório para armazenamento de dados JSON
+│   └── example_data.json   # Dados de exemplo para demonstração
 ├── uploads/                # Diretório para armazenamento de documentos
+│   └── documento_teste.pdf # Documento de exemplo para demonstração
 ├── static/                 # Arquivos estáticos
 │   ├── css/                # Estilos CSS
+│   │   └── style.css       # Estilos personalizados
 │   ├── js/                 # Scripts JavaScript
+│   │   └── main.js         # Scripts personalizados
 │   └── img/                # Imagens
 ├── templates/              # Templates HTML
 │   ├── base.html           # Template base
@@ -45,8 +53,9 @@ automacao_financeira_mvp/
 ## Requisitos
 
 - Python 3.8+
-- Flask
-- Werkzeug
+- Flask 2.2.3
+- Werkzeug 2.2.3
+- Gunicorn 20.1.0 (para deploy)
 - Bootstrap 5 (CDN)
 - Chart.js (CDN)
 
@@ -69,19 +78,20 @@ automacao_financeira_mvp/
    pip install -r requirements.txt
    ```
 
-4. Crie os diretórios necessários:
-   ```
-   mkdir -p data uploads
-   ```
-
-5. Execute o aplicativo:
+4. Execute o aplicativo:
    ```
    python app.py
    ```
 
-6. Acesse o aplicativo em seu navegador:
+5. Acesse o aplicativo em seu navegador:
    ```
    http://localhost:5000
+   ```
+
+6. Credenciais de demonstração:
+   ```
+   Email: demo@example.com
+   Senha: senha123
    ```
 
 ## Funcionalidades Principais
@@ -136,8 +146,18 @@ python app.py
 2. Crie um novo Web Service
 3. Conecte ao seu repositório GitHub
 4. Configure o build command: `pip install -r requirements.txt`
+   - **IMPORTANTE**: Não use o comando `flask db upgrade` pois esta versão não utiliza banco de dados SQL
 5. Configure o start command: `gunicorn app:app`
 6. Clique em "Create Web Service"
+
+## Testes
+
+Para executar os testes automatizados do diagnóstico financeiro:
+```
+python test_diagnostic_mvp.py
+```
+
+Os resultados dos testes serão exibidos no console e também salvos no arquivo `test_results_mvp.json`.
 
 ## Limitações do MVP
 
@@ -145,6 +165,19 @@ python app.py
 - Processamento simulado de documentos (extração real de dados não implementada)
 - Sem backup automático de dados
 - Autenticação básica sem recuperação de senha
+
+## Solução de Problemas
+
+### Erro no Deploy
+Se encontrar erros durante o deploy no Render.com:
+1. Verifique se o comando de build não inclui `flask db upgrade`
+2. Certifique-se de que todos os diretórios necessários existem no repositório
+3. Verifique se o arquivo `requirements.txt` está completo e correto
+
+### Erro de Permissão de Arquivos
+Se encontrar erros de permissão ao salvar arquivos:
+1. Verifique se os diretórios `data` e `uploads` existem
+2. Certifique-se de que o aplicativo tem permissão para escrever nesses diretórios
 
 ## Próximos Passos
 

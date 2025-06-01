@@ -1,1 +1,6 @@
-Arquivo de teste
+"""
+Arquivo de exemplo para demonstração do upload de documentos
+"""
+
+# Este é um arquivo PDF de exemplo para testar o upload de documentos
+# No sistema real, este arquivo seria substituído por documentos reais do usuário

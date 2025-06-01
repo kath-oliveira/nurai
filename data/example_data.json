@@ -1,0 +1,53 @@
+"""
+Arquivo de exemplo para demonstração do armazenamento de dados
+"""
+
+{
+  "users": {
+    "demo@example.com": {
+      "password_hash": "pbkdf2:sha256:600000$X7YECVIGgpKs2QqJ$b8a33a5ec7b731a3ea0bdbe6e33c993c5fcd7e68e0ad5bd9c1a2cc29d74f4c5b",
+      "name": "Usuário Demonstração",
+      "company": "Empresa Exemplo LTDA",
+      "created_at": "2025-06-01T12:00:00"
+    }
+  },
+  "questionnaires": {
+    "demo@example.com": {
+      "company_name": "Empresa Exemplo LTDA",
+      "cnpj": "12.345.678/0001-90",
+      "setor_atuacao": "Tecnologia",
+      "modelo_negocios": "SaaS",
+      "num_funcionarios": 25,
+      "ano_fundacao": 2020,
+      "principais_produtos": "Software de gestão financeira, consultoria",
+      "receita_ano1": 1500000,
+      "receita_ano2": 1800000,
+      "receita_ano3": 2160000,
+      "receita_ano4": 2592000,
+      "receita_ano5": 3110400,
+      "custos_ano1": 1050000,
+      "custos_ano2": 1200000,
+      "custos_ano3": 1380000,
+      "custos_ano4": 1587000,
+      "custos_ano5": 1825050,
+      "custos_fixos_pct": 60,
+      "tam_valor": 5000000000,
+      "sam_valor": 500000000,
+      "som_valor": 10000000,
+      "principais_riscos": "Concorrência, mudanças regulatórias"
+    }
+  },
+  "documents": {
+    "demo@example.com": [
+      {
+        "id": "doc1",
+        "document_type": "balanco_patrimonial",
+        "document_type_display": "Balanço Patrimonial",
+        "filename": "balanco_2024.pdf",
+        "upload_date": "2025-06-01T12:00:00",
+        "analysis_status": "Processado",
+        "file_path": "uploads/documento_teste.pdf"
+      }
+    ]
+  }
+}
