@@ -150,6 +150,9 @@ python app.py
 5. Configure o start command: `gunicorn app:app`
 6. Clique em "Create Web Service"
 
+**Alternativa usando render.yaml:**
+Este projeto inclui um arquivo `render.yaml` que configura automaticamente o serviço no Render.com. Se você estiver enfrentando problemas com a configuração manual, o Render.com detectará este arquivo e usará as configurações nele definidas.
+
 ## Testes
 
 Para executar os testes automatizados do diagnóstico financeiro:
