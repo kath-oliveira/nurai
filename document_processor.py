@@ -1,6 +1,7 @@
 """
 Processamento de documentos financeiros, diagnóstico e valuation.
 Implementação de cálculos reais para o MVP com dashboard visual.
+Versão simplificada sem dependência de banco de dados.
 """
 
 import os
@@ -294,7 +295,7 @@ class FinancialDiagnostic:
                         integrated_data["financial_ratios"]["prazo_medio_pagamento"] = extracted["prazo_medio_pagamento"]
             
             # Ajusta dados do questionário com base nos documentos, se necessário
-            if integrated_data["has_document_data"]:
+            if integrated_data.get("has_document_data"):
                 # Se temos dados de receita da DRE, podemos ajustar a receita do ano 1
                 if "receita_liquida" in integrated_data.get("income_statement", {}):
                     receita_ano1 = float(questionnaire_data.get("receita_ano1", 0) or 0)

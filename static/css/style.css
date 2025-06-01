@@ -1,90 +1,262 @@
-/* General Styles */
+/* Estilos personalizados para o sistema CFO as a Service */
+
+/* Variáveis de cores */
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+}
+
+/* Estilos gerais */
 body {
-    overflow-x: hidden; /* Prevent horizontal scroll */
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
 }
 
-/* Sidebar Styles */
-#sidebar-wrapper {
-    min-height: 100vh;
-    margin-left: -15rem;
-    transition: margin 0.25s ease-out;
+/* Barra lateral */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    transition: all 0.3s;
+    background-color: #fff;
 }
 
-#sidebar-wrapper .sidebar-heading {
-    padding: 0.875rem 1.25rem;
-    font-size: 1.2rem;
+.sidebar-sticky {
+    position: relative;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: 0.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
-#sidebar-wrapper .list-group {
-    width: 15rem;
+/* Botão para colapsar a barra lateral */
+.sidebar-toggle {
+    position: absolute;
+    right: -15px;
+    top: 20px;
+    z-index: 101;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 
-#page-content-wrapper {
-    min-width: 100vw;
+.sidebar-toggle i {
+    transition: transform 0.3s;
 }
 
-#wrapper.toggled #sidebar-wrapper {
+.sidebar.collapsed {
+    width: 0;
+    padding: 0;
+}
+
+.sidebar.collapsed + .main-content {
     margin-left: 0;
 }
 
-@media (min-width: 768px) {
-    #sidebar-wrapper {
-        margin-left: 0;
-    }
+.main-content {
+    transition: margin-left 0.3s;
+}
 
-    #page-content-wrapper {
-        min-width: 0;
+/* Cards e painéis */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border: none;
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    font-weight: 500;
+}
+
+/* Botões */
+.btn {
+    border-radius: 5px;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+/* Formulários */
+.form-control {
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Dashboard */
+.dashboard-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card .card-body {
+    flex: 1;
+}
+
+.dashboard-stat {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-label {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+/* Indicadores financeiros */
+.indicator {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.indicator-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.indicator-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.indicator-description {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+/* Status de saúde financeira */
+.health-status {
+    padding: 10px 15px;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 600;
+}
+
+.health-status.success {
+    background-color: rgba(25, 135, 84, 0.2);
+    color: var(--success-color);
+}
+
+.health-status.warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #856404;
+}
+
+.health-status.danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: var(--danger-color);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .sidebar {
         width: 100%;
+        position: relative;
+        height: auto;
+        padding: 0;
     }
-
-    #wrapper.toggled #sidebar-wrapper {
-        margin-left: -15rem;
+    
+    .sidebar-sticky {
+        height: auto;
+    }
+    
+    .sidebar.collapsed {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .dashboard-stat {
+        font-size: 1.5rem;
     }
 }
 
-/* Custom Card Styles */
-.indicator-card {
-    border-left-width: 5px;
-    border-left-style: solid;
-    margin-bottom: 1rem;
+/* Animações */
+.fade-in {
+    animation: fadeIn 0.5s;
 }
 
-.indicator-card.attention {
-    border-left-color: #ffc107; /* Yellow */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-.indicator-card.critical {
-    border-left-color: #dc3545; /* Red */
+/* Gráficos */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
 }
 
-.indicator-card:not(.attention):not(.critical) {
-     border-left-color: #0d6efd; /* Blue */
+/* Tabelas */
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Drop Zone Styles */
-.drop-zone {
-    border: 2px dashed #ccc;
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-.drop-zone.dragover {
-    background-color: #e9ecef;
+.table {
+    margin-bottom: 0;
 }
 
-/* Questionnaire Tabs */
-.nav-tabs .nav-link.active {
-    font-weight: bold;
-    background-color: #e9ecef;
-    border-color: #dee2e6 #dee2e6 #fff;
-}
-.tab-pane {
-    padding-top: 1rem;
+.table thead th {
+    background-color: var(--light-color);
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
 }
 
-/* Utility */
-.text-danger {
-    color: #dc3545 !important;
+/* Paginação */
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
+.pagination .page-link {
+    color: var(--primary-color);
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+}

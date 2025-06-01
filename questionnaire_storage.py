@@ -1,131 +1,186 @@
 """
-Armazenamento e gerenciamento do template do questionário financeiro.
+Armazenamento e template do questionário financeiro.
+Versão simplificada para MVP sem banco de dados.
 """
 
-import json
-
 class QuestionnaireTemplate:
+    """Classe para gerenciar o template do questionário financeiro."""
+    
     @staticmethod
     def get_template():
-        # Retorna um template básico ou carrega de um arquivo JSON se existir
-        try:
-            with open("questionnaire_template.json", "r", encoding="utf-8") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            # Template completo baseado nas perguntas fornecidas pelo usuário
-            return {
-                "sections": [
-                    {
-                        "id": "dados_gerais",
-                        "title": "Dados Gerais da Empresa",
-                        "questions": [
-                            {"id": "nome_empresa", "label": "Nome da empresa", "type": "text"},
-                            {"id": "cnpj", "label": "CNPJ da empresa", "type": "text"},
-                            {"id": "ano_fundacao", "label": "Ano de fundação", "type": "number"},
-                            {"id": "num_socios", "label": "Número de sócios", "type": "number"},
-                            {"id": "num_funcionarios", "label": "Número de funcionários", "type": "number"},
-                            {"id": "faturamento_anual", "label": "Faturamento anual (R$)", "type": "number"},
-                            {"id": "setor_atuacao", "label": "Qual o setor de atuação?", "type": "select", 
-                             "options": ["Indústria", "Varejo", "Serviços", "Tecnologia", "Agro", "Construção", "Saúde", "Educação", "Outros"]}
-                        ]
-                    },
-                    {
-                        "id": "proposta_valor",
-                        "title": "Proposta de Valor",
-                        "questions": [
-                            {"id": "problemas_resolve", "label": "Qual(is) o(s) problema(s) que a empresa resolve?", "type": "textarea"},
-                            {"id": "solucoes_oferece", "label": "Qual(is) a(s) solução(ões) que a empresa oferece?", "type": "textarea"},
-                            {"id": "timing_negocio", "label": "Por que agora é o momento certo (timing) para este negócio?", "type": "textarea"},
-                            {"id": "diferenciais_competitivos", "label": "Quais são os diferenciais competitivos da empresa?", "type": "textarea"},
-                            {"id": "portfolio_atual", "label": "Descreva o portfólio atual de produtos/serviços.", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "validacao_mercado",
-                        "title": "Validação de Mercado",
-                        "questions": [
-                            {"id": "identificacao_mercado", "label": "Como sua empresa identificou esse mercado?", "type": "textarea"},
-                            {"id": "num_potenciais_clientes", "label": "Quantos potenciais clientes sua empresa já conversou?", "type": "number"},
-                            {"id": "num_entrevistas_stakeholders", "label": "Quantas entrevistas foram realizadas com stakeholders?", "type": "number"},
-                            {"id": "necessidades_clientes", "label": "Quais necessidades dos clientes serão atendidas com a sua solução?", "type": "textarea"},
-                            {"id": "harmonizacao_portfolio", "label": "Como sua solução se harmoniza com o portfólio atual ou potencial dos clientes?", "type": "textarea"},
-                            {"id": "segmentos_alvo", "label": "Quais são os segmentos-alvo? Caracterize-os (tamanho, faturamento, localização, nacional/internacional).", "type": "textarea"},
-                            {"id": "satisfacao_atual", "label": "Como os clientes atualmente satisfazem a necessidade que sua empresa propõe atender?", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "estrutura_equipe",
-                        "title": "Estrutura Operacional e Equipe",
-                        "questions": [
-                            {"id": "estrutura_atual", "label": "Descreva a estrutura atual da empresa (áreas, organograma).", "type": "textarea"},
-                            {"id": "colaboradores_por_area", "label": "Informe o número de colaboradores/sócios por área.", "type": "textarea"},
-                            {"id": "competencias_equipe", "label": "Quais são as principais competências e experiências da equipe?", "type": "textarea"},
-                            {"id": "deficiencias_equipe", "label": "Existem deficiências na equipe? Como serão resolvidas?", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "produto_propriedade",
-                        "title": "Produto, Solução e Propriedade Intelectual",
-                        "questions": [
-                            {"id": "atributos_solucao", "label": "Quais os principais atributos e características da sua solução/produto?", "type": "textarea"},
-                            {"id": "permite_protecao", "label": "Sua solução permite proteção intelectual?", "type": "select", 
-                             "options": ["Sim", "Não"]},
-                            {"id": "estrategia_protecao", "label": "Se sim, qual a estratégia de proteção adotada?", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "concorrencia_estrategia",
-                        "title": "Concorrência e Estratégia Competitiva",
-                        "questions": [
-                            {"id": "concorrentes", "label": "Quem são os concorrentes diretos e indiretos?", "type": "textarea"},
-                            {"id": "atributos_diferenciadores", "label": "Quais atributos diferenciam sua solução em relação aos concorrentes?", "type": "textarea"},
-                            {"id": "posicionamento_mercado", "label": "Qual o posicionamento atual ou pretendido da empresa no mercado?", "type": "textarea"},
-                            {"id": "barreiras_entrada", "label": "Quais são as barreiras de entrada no mercado? Como a empresa pretende superá-las?", "type": "textarea"},
-                            {"id": "riscos_mitigacao", "label": "Quais são os principais riscos de operação do negócio e como serão mitigados?", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "modelo_monetizacao",
-                        "title": "Modelo de Negócio e Monetização",
-                        "questions": [
-                            {"id": "modelo_negocios", "label": "Qual é o modelo de negócios da empresa?", "type": "select", 
-                             "options": ["Assinatura", "Venda direta", "Licenciamento", "Intermediação", "Freemium", "Outro"]},
-                            {"id": "contribuicao_receitas", "label": "Como o modelo de negócio adotado contribui para gerar receitas da inovação?", "type": "textarea"},
-                            {"id": "fontes_receita", "label": "Quais são as fontes atuais de receita?", "type": "textarea"},
-                            {"id": "racionalidade_projecoes", "label": "Justifique a racionalidade das projeções de custos e receitas.", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "projecoes_financeiras",
-                        "title": "Projeções Financeiras (5 Anos)",
-                        "questions": [
-                            {"id": "tam_mercado", "label": "Estimativa de TAM (mercado total disponível) em R$.", "type": "number"},
-                            {"id": "sam_mercado", "label": "Estimativa de SAM (mercado útil disponível) em R$.", "type": "number"},
-                            {"id": "som_mercado", "label": "Estimativa de SOM (mercado alcançável) em R$.", "type": "number"},
-                            {"id": "receita_ano1", "label": "Receita projetada para o 1º ano.", "type": "number"},
-                            {"id": "receita_ano2", "label": "Receita projetada para o 2º ano.", "type": "number"},
-                            {"id": "receita_ano3", "label": "Receita projetada para o 3º ano.", "type": "number"},
-                            {"id": "receita_ano4", "label": "Receita projetada para o 4º ano.", "type": "number"},
-                            {"id": "receita_ano5", "label": "Receita projetada para o 5º ano.", "type": "number"},
-                            {"id": "custos_ano1", "label": "Custos fixos e variáveis projetados para o 1º ano.", "type": "number"},
-                            {"id": "custos_ano2", "label": "Custos fixos e variáveis projetados para o 2º ano.", "type": "number"},
-                            {"id": "custos_ano3", "label": "Custos fixos e variáveis projetados para o 3º ano.", "type": "number"},
-                            {"id": "custos_ano4", "label": "Custos fixos e variáveis projetados para o 4º ano.", "type": "number"},
-                            {"id": "custos_ano5", "label": "Custos fixos e variáveis projetados para o 5º ano.", "type": "number"},
-                            {"id": "justificativa_projecoes", "label": "Justifique as projeções de receitas e custos.", "type": "textarea"},
-                            {"id": "cronograma_financeiro", "label": "Cronograma físico-financeiro resumido.", "type": "textarea"}
-                        ]
-                    },
-                    {
-                        "id": "comercial_marketing",
-                        "title": "Comercial, Vendas e Marketing",
-                        "questions": [
-                            {"id": "estrategias_marketing", "label": "Quais as estratégias de marketing para o produto/solução?", "type": "textarea"},
-                            {"id": "metodos_venda", "label": "Quais métodos de venda serão utilizados?", "type": "textarea"},
-                            {"id": "estrategia_insercao", "label": "Qual é a estratégia de inserção no mercado?", "type": "textarea"},
-                            {"id": "estrategia_precificacao", "label": "Qual é a estratégia de precificação?", "type": "textarea"},
-                            {"id": "estrategia_distribuicao", "label": "Qual a estratégia de distribuição, assistência técnica e pós-venda?", "type": "textarea"}
-                        ]
-                    }
-                ]
-            }
+        """Retorna o template do questionário financeiro."""
+        return {
+            "title": "Questionário de Diagnóstico Financeiro",
+            "description": "Este questionário ajudará a realizar um diagnóstico financeiro completo da sua empresa.",
+            "sections": [
+                {
+                    "title": "Informações Financeiras Básicas",
+                    "description": "Informe os dados financeiros básicos da sua empresa.",
+                    "questions": [
+                        {
+                            "id": "receita_ano1",
+                            "type": "number",
+                            "label": "Receita total no último ano (R$)",
+                            "placeholder": "Ex: 1000000",
+                            "required": True
+                        },
+                        {
+                            "id": "receita_ano2",
+                            "type": "number",
+                            "label": "Receita total projetada para este ano (R$)",
+                            "placeholder": "Ex: 1200000",
+                            "required": False
+                        },
+                        {
+                            "id": "receita_ano3",
+                            "type": "number",
+                            "label": "Receita total projetada para o próximo ano (R$)",
+                            "placeholder": "Ex: 1500000",
+                            "required": False
+                        },
+                        {
+                            "id": "receita_ano4",
+                            "type": "number",
+                            "label": "Receita total projetada para daqui a 2 anos (R$)",
+                            "placeholder": "Ex: 1800000",
+                            "required": False
+                        },
+                        {
+                            "id": "receita_ano5",
+                            "type": "number",
+                            "label": "Receita total projetada para daqui a 3 anos (R$)",
+                            "placeholder": "Ex: 2200000",
+                            "required": False
+                        },
+                        {
+                            "id": "custos_ano1",
+                            "type": "number",
+                            "label": "Custos totais no último ano (R$)",
+                            "placeholder": "Ex: 700000",
+                            "required": True
+                        },
+                        {
+                            "id": "custos_ano2",
+                            "type": "number",
+                            "label": "Custos totais projetados para este ano (R$)",
+                            "placeholder": "Ex: 800000",
+                            "required": False
+                        },
+                        {
+                            "id": "custos_ano3",
+                            "type": "number",
+                            "label": "Custos totais projetados para o próximo ano (R$)",
+                            "placeholder": "Ex: 1000000",
+                            "required": False
+                        },
+                        {
+                            "id": "custos_ano4",
+                            "type": "number",
+                            "label": "Custos totais projetados para daqui a 2 anos (R$)",
+                            "placeholder": "Ex: 1200000",
+                            "required": False
+                        },
+                        {
+                            "id": "custos_ano5",
+                            "type": "number",
+                            "label": "Custos totais projetados para daqui a 3 anos (R$)",
+                            "placeholder": "Ex: 1400000",
+                            "required": False
+                        },
+                        {
+                            "id": "custos_fixos_pct",
+                            "type": "number",
+                            "label": "Percentual de custos fixos (%)",
+                            "placeholder": "Ex: 60",
+                            "required": False
+                        }
+                    ]
+                },
+                {
+                    "title": "Informações Operacionais",
+                    "description": "Informe os dados operacionais da sua empresa.",
+                    "questions": [
+                        {
+                            "id": "num_funcionarios",
+                            "type": "number",
+                            "label": "Número de funcionários",
+                            "placeholder": "Ex: 10",
+                            "required": True
+                        },
+                        {
+                            "id": "setor_atuacao",
+                            "type": "select",
+                            "label": "Setor de atuação",
+                            "options": [
+                                {"value": "Tecnologia", "label": "Tecnologia"},
+                                {"value": "SaaS", "label": "SaaS"},
+                                {"value": "Saúde", "label": "Saúde"},
+                                {"value": "Varejo", "label": "Varejo"},
+                                {"value": "Indústria", "label": "Indústria"},
+                                {"value": "Serviços", "label": "Serviços"},
+                                {"value": "Agro", "label": "Agronegócio"},
+                                {"value": "Construção", "label": "Construção"},
+                                {"value": "Educação", "label": "Educação"},
+                                {"value": "Outros", "label": "Outros"}
+                            ],
+                            "required": True
+                        },
+                        {
+                            "id": "modelo_negocios",
+                            "type": "select",
+                            "label": "Modelo de negócios",
+                            "options": [
+                                {"value": "Assinatura", "label": "Assinatura (SaaS)"},
+                                {"value": "Venda direta", "label": "Venda direta"},
+                                {"value": "Licenciamento", "label": "Licenciamento"},
+                                {"value": "Intermediação", "label": "Intermediação/Marketplace"},
+                                {"value": "Freemium", "label": "Freemium"},
+                                {"value": "Outro", "label": "Outro"}
+                            ],
+                            "required": True
+                        },
+                        {
+                            "id": "principais_produtos",
+                            "type": "text",
+                            "label": "Principais produtos ou serviços",
+                            "placeholder": "Ex: Software de gestão financeira",
+                            "required": True
+                        }
+                    ]
+                },
+                {
+                    "title": "Mercado e Concorrência",
+                    "description": "Informe dados sobre o mercado e concorrência.",
+                    "questions": [
+                        {
+                            "id": "tam_valor",
+                            "type": "number",
+                            "label": "Tamanho total do mercado - TAM (R$)",
+                            "placeholder": "Ex: 1000000000",
+                            "required": False
+                        },
+                        {
+                            "id": "sam_valor",
+                            "type": "number",
+                            "label": "Mercado disponível - SAM (R$)",
+                            "placeholder": "Ex: 500000000",
+                            "required": False
+                        },
+                        {
+                            "id": "som_valor",
+                            "type": "number",
+                            "label": "Mercado acessível - SOM (R$)",
+                            "placeholder": "Ex: 100000000",
+                            "required": False
+                        },
+                        {
+                            "id": "principais_riscos",
+                            "type": "text",
+                            "label": "Principais riscos e desafios",
+                            "placeholder": "Ex: Concorrência de grandes players, mudanças regulatórias",
+                            "required": False
+                        }
+                    ]
+                }
+            ]
+        }
