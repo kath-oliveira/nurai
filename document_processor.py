@@ -23,31 +23,82 @@ class DocumentProcessor:
         logger.info(f"Processando documento: {file_path} do tipo {document_type}")
         try:
             file_size = os.path.getsize(file_path)
+            
+            # Aqui seria implementada a extração real de dados do documento
+            # Para o MVP, simulamos dados extraídos com base no tipo de documento
+            extracted_data = self._simulate_document_extraction(file_path, document_type)
+            
             return {
                 "processed": True,
-                "message": f"Documento '{os.path.basename(file_path)}' recebido com sucesso.",
+                "message": f"Documento '{os.path.basename(file_path)}' processado com sucesso.",
                 "file_size": file_size,
                 "document_type": document_type,
-                "analysis_status": "Processado"
+                "analysis_status": "Processado",
+                "extracted_data": extracted_data
             }
         except Exception as e:
             logger.error(f"Erro ao processar documento {file_path}: {e}")
             return {
                 "processed": False,
                 "message": f"Erro ao processar documento: {e}",
-                "analysis_status": "Erro"
+                "analysis_status": "Erro",
+                "extracted_data": {}
+            }
+    
+    def _simulate_document_extraction(self, file_path, document_type):
+        """Simula a extração de dados de documentos para o MVP."""
+        filename = os.path.basename(file_path).lower()
+        
+        # Dados simulados com base no tipo de documento
+        if document_type == "balanco_patrimonial":
+            return {
+                "ativo_total": 1500000,
+                "passivo_total": 900000,
+                "patrimonio_liquido": 600000,
+                "ativo_circulante": 800000,
+                "passivo_circulante": 500000,
+                "estoques": 300000
+            }
+        elif document_type == "dre":
+            return {
+                "receita_liquida": 2000000,
+                "custo_produtos": 1200000,
+                "lucro_bruto": 800000,
+                "despesas_operacionais": 500000,
+                "lucro_operacional": 300000,
+                "lucro_liquido": 250000
+            }
+        elif document_type == "fluxo_caixa":
+            return {
+                "caixa_operacional": 350000,
+                "caixa_investimentos": -150000,
+                "caixa_financiamentos": -50000,
+                "variacao_liquida": 150000
+            }
+        elif document_type == "relatorio_contas":
+            return {
+                "contas_receber": 400000,
+                "prazo_medio_recebimento": 45,
+                "contas_pagar": 300000,
+                "prazo_medio_pagamento": 30
+            }
+        else:
+            # Documento genérico
+            return {
+                "tamanho_arquivo": os.path.getsize(file_path),
+                "tipo_documento": document_type
             }
 
 class FinancialDiagnostic:
-    """Gera diagnóstico financeiro baseado nas respostas do questionário."""
+    """Gera diagnóstico financeiro baseado nas respostas do questionário e documentos."""
     
     def generate_diagnostic(self, documents_data, questionnaire_data):
-        """Gera um diagnóstico financeiro com base nas respostas do questionário."""
-        logger.info("Gerando diagnóstico financeiro...")
+        """Gera um diagnóstico financeiro com base nas respostas do questionário e documentos."""
+        logger.info("Gerando diagnóstico financeiro integrado...")
         
         # Extrai dados básicos do questionário
         try:
-            # Dados financeiros
+            # Dados financeiros do questionário
             receita_ano1 = float(questionnaire_data.get("receita_ano1", 0) or 0)
             receita_ano2 = float(questionnaire_data.get("receita_ano2", 0) or 0)
             receita_ano3 = float(questionnaire_data.get("receita_ano3", 0) or 0)
@@ -92,8 +143,11 @@ class FinancialDiagnostic:
             tam_valor = sam_valor = som_valor = 0
             principais_riscos = "Concorrência"
         
-        # Calcula indicadores financeiros
-        indicators = self._calculate_financial_indicators(questionnaire_data)
+        # Extrair e integrar dados dos documentos
+        integrated_data = self._integrate_document_data(documents_data, questionnaire_data)
+        
+        # Calcula indicadores financeiros com dados integrados
+        indicators = self._calculate_financial_indicators(questionnaire_data, integrated_data)
         
         # Calcula a pontuação geral
         scores = [
@@ -111,20 +165,25 @@ class FinancialDiagnostic:
         health_status, health_color = self._get_health_status(overall_score)
         
         # Calcula KPIs para o dashboard
-        kpis = self._calculate_dashboard_kpis(questionnaire_data)
+        kpis = self._calculate_dashboard_kpis(questionnaire_data, integrated_data)
         
         # Prepara dados para gráficos
-        chart_data = self._prepare_chart_data(questionnaire_data)
+        chart_data = self._prepare_chart_data(questionnaire_data, integrated_data)
         
         # Gera recomendações com base nos indicadores
-        recommendations = self._generate_recommendations(indicators)
+        recommendations = self._generate_recommendations(indicators, integrated_data)
         
         # Gera o resumo com base na pontuação geral
-        summary = self._generate_summary(overall_score)
+        summary = self._generate_summary(overall_score, integrated_data)
+        
+        # Determina a fonte dos dados para o diagnóstico
+        data_source = "Baseado apenas nas respostas do questionário"
+        if integrated_data.get("has_document_data", False):
+            data_source = "Baseado nas respostas do questionário e documentos enviados"
         
         # Monta o diagnóstico completo
         diagnostic = {
-            "status": "Baseado nas respostas do questionário",
+            "status": data_source,
             "summary": summary,
             "recommendations": recommendations,
             "indicators": indicators,
@@ -167,27 +226,152 @@ class FinancialDiagnostic:
         
         return diagnostic
     
-    def _calculate_financial_indicators(self, data):
+    def _integrate_document_data(self, documents_data, questionnaire_data):
+        """Integra dados extraídos de documentos com dados do questionário."""
+        logger.info("Integrando dados de documentos com questionário...")
+        
+        # Inicializa o dicionário de dados integrados
+        integrated_data = {
+            "has_document_data": False,
+            "financial_ratios": {},
+            "balance_sheet": {},
+            "income_statement": {},
+            "cash_flow": {}
+        }
+        
+        # Se não houver documentos, retorna apenas os dados do questionário
+        if not documents_data or len(documents_data) == 0:
+            logger.info("Nenhum documento disponível para integração.")
+            return integrated_data
+        
+        try:
+            # Processa cada documento e extrai dados relevantes
+            for doc in documents_data:
+                if not doc.get("extracted_data"):
+                    continue
+                
+                doc_type = doc.get("document_type", "").lower()
+                extracted = doc.get("extracted_data", {})
+                
+                # Marca que temos dados de documentos
+                integrated_data["has_document_data"] = True
+                
+                # Integra dados de balanço patrimonial
+                if doc_type == "balanco_patrimonial":
+                    integrated_data["balance_sheet"].update(extracted)
+                    
+                    # Calcula índices financeiros do balanço
+                    if "ativo_circulante" in extracted and "passivo_circulante" in extracted and extracted["passivo_circulante"] > 0:
+                        integrated_data["financial_ratios"]["liquidez_corrente"] = extracted["ativo_circulante"] / extracted["passivo_circulante"]
+                    
+                    if "ativo_circulante" in extracted and "estoques" in extracted and "passivo_circulante" in extracted and extracted["passivo_circulante"] > 0:
+                        integrated_data["financial_ratios"]["liquidez_seca"] = (extracted["ativo_circulante"] - extracted["estoques"]) / extracted["passivo_circulante"]
+                    
+                    if "passivo_total" in extracted and "ativo_total" in extracted and extracted["ativo_total"] > 0:
+                        integrated_data["financial_ratios"]["endividamento_geral"] = extracted["passivo_total"] / extracted["ativo_total"]
+                
+                # Integra dados de DRE
+                elif doc_type == "dre":
+                    integrated_data["income_statement"].update(extracted)
+                    
+                    # Calcula índices financeiros da DRE
+                    if "lucro_liquido" in extracted and "receita_liquida" in extracted and extracted["receita_liquida"] > 0:
+                        integrated_data["financial_ratios"]["margem_liquida"] = extracted["lucro_liquido"] / extracted["receita_liquida"]
+                    
+                    if "lucro_bruto" in extracted and "receita_liquida" in extracted and extracted["receita_liquida"] > 0:
+                        integrated_data["financial_ratios"]["margem_bruta"] = extracted["lucro_bruto"] / extracted["receita_liquida"]
+                
+                # Integra dados de fluxo de caixa
+                elif doc_type == "fluxo_caixa":
+                    integrated_data["cash_flow"].update(extracted)
+                
+                # Integra dados de relatório de contas
+                elif doc_type == "relatorio_contas":
+                    if "prazo_medio_recebimento" in extracted:
+                        integrated_data["financial_ratios"]["prazo_medio_recebimento"] = extracted["prazo_medio_recebimento"]
+                    
+                    if "prazo_medio_pagamento" in extracted:
+                        integrated_data["financial_ratios"]["prazo_medio_pagamento"] = extracted["prazo_medio_pagamento"]
+            
+            # Ajusta dados do questionário com base nos documentos, se necessário
+            if integrated_data["has_document_data"]:
+                # Se temos dados de receita da DRE, podemos ajustar a receita do ano 1
+                if "receita_liquida" in integrated_data.get("income_statement", {}):
+                    receita_ano1 = float(questionnaire_data.get("receita_ano1", 0) or 0)
+                    receita_dre = integrated_data["income_statement"]["receita_liquida"]
+                    
+                    # Se a diferença for significativa, usamos a média ou o valor da DRE
+                    if receita_ano1 > 0:
+                        if abs(receita_ano1 - receita_dre) / receita_ano1 > 0.2:  # Diferença > 20%
+                            integrated_data["adjusted_revenue"] = (receita_ano1 + receita_dre) / 2
+                        else:
+                            integrated_data["adjusted_revenue"] = receita_ano1
+                    else:
+                        integrated_data["adjusted_revenue"] = receita_dre
+                
+                # Se temos dados de custos da DRE, podemos ajustar os custos do ano 1
+                if "custo_produtos" in integrated_data.get("income_statement", {}):
+                    custos_ano1 = float(questionnaire_data.get("custos_ano1", 0) or 0)
+                    custos_dre = integrated_data["income_statement"]["custo_produtos"]
+                    
+                    # Se a diferença for significativa, usamos a média ou o valor da DRE
+                    if custos_ano1 > 0:
+                        if abs(custos_ano1 - custos_dre) / custos_ano1 > 0.2:  # Diferença > 20%
+                            integrated_data["adjusted_costs"] = (custos_ano1 + custos_dre) / 2
+                        else:
+                            integrated_data["adjusted_costs"] = custos_ano1
+                    else:
+                        integrated_data["adjusted_costs"] = custos_dre
+            
+            logger.info(f"Integração de dados concluída. Dados de documentos disponíveis: {integrated_data['has_document_data']}")
+            return integrated_data
+            
+        except Exception as e:
+            logger.error(f"Erro ao integrar dados de documentos: {e}")
+            return integrated_data
+    
+    def _calculate_financial_indicators(self, data, integrated_data=None):
         """Calcula todos os indicadores financeiros."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+        
         return {
-            "rentabilidade": self._calculate_rentability_score(data),
-            "liquidez": self._calculate_liquidity_score(data),
-            "endividamento": self._calculate_debt_score(data),
-            "eficiencia": self._calculate_efficiency_score(data),
-            "crescimento": self._calculate_growth_score(data)
+            "rentabilidade": self._calculate_rentability_score(data, integrated_data),
+            "liquidez": self._calculate_liquidity_score(data, integrated_data),
+            "endividamento": self._calculate_debt_score(data, integrated_data),
+            "eficiencia": self._calculate_efficiency_score(data, integrated_data),
+            "crescimento": self._calculate_growth_score(data, integrated_data)
         }
     
-    def _calculate_dashboard_kpis(self, data):
+    def _calculate_dashboard_kpis(self, data, integrated_data=None):
         """Calcula os KPIs principais para o dashboard."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+            
         try:
-            # Extrai dados relevantes
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+            # Extrai dados relevantes, priorizando dados de documentos quando disponíveis
+            if integrated_data.get("has_document_data") and "adjusted_revenue" in integrated_data:
+                receita_ano1 = integrated_data["adjusted_revenue"]
+            else:
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                
+            if integrated_data.get("has_document_data") and "adjusted_costs" in integrated_data:
+                custos_ano1 = integrated_data["adjusted_costs"]
+            else:
+                custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+                
             receita_ano5 = float(data.get("receita_ano5", 0) or 0)
-            custos_ano1 = float(data.get("custos_ano1", 0) or 0)
             num_funcionarios = int(data.get("num_funcionarios", 0) or 0)
             
             # Calcula margem operacional
-            margem_operacional = round(((receita_ano1 - custos_ano1) / receita_ano1) * 100, 1) if receita_ano1 > 0 else 0
+            if "margem_liquida" in integrated_data.get("financial_ratios", {}):
+                # Usa margem da DRE se disponível
+                margem_operacional = integrated_data["financial_ratios"]["margem_liquida"] * 100
+            else:
+                # Calcula com dados do questionário
+                margem_operacional = round(((receita_ano1 - custos_ano1) / receita_ano1) * 100, 1) if receita_ano1 > 0 else 0
             
             # Calcula CAGR
             cagr = round((math.pow(receita_ano5 / receita_ano1, 1/4) - 1) * 100, 1) if receita_ano1 > 0 and receita_ano5 > 0 else 0
@@ -219,12 +403,28 @@ class FinancialDiagnostic:
                 "produtividade_media_formatada": "R$ 0"
             }
     
-    def _prepare_chart_data(self, data):
+    def _prepare_chart_data(self, data, integrated_data=None):
         """Prepara dados para os gráficos do dashboard."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+            
         try:
+            # Ajusta receita do ano 1 se temos dados de documentos
+            if integrated_data.get("has_document_data") and "adjusted_revenue" in integrated_data:
+                receita_ano1_ajustada = integrated_data["adjusted_revenue"]
+            else:
+                receita_ano1_ajustada = float(data.get("receita_ano1", 0) or 0)
+                
+            # Ajusta custos do ano 1 se temos dados de documentos
+            if integrated_data.get("has_document_data") and "adjusted_costs" in integrated_data:
+                custos_ano1_ajustados = integrated_data["adjusted_costs"]
+            else:
+                custos_ano1_ajustados = float(data.get("custos_ano1", 0) or 0)
+            
             # Extrai dados de receita e custos
             receitas = [
-                float(data.get("receita_ano1", 0) or 0),
+                receita_ano1_ajustada,
                 float(data.get("receita_ano2", 0) or 0),
                 float(data.get("receita_ano3", 0) or 0),
                 float(data.get("receita_ano4", 0) or 0),
@@ -232,7 +432,7 @@ class FinancialDiagnostic:
             ]
             
             custos = [
-                float(data.get("custos_ano1", 0) or 0),
+                custos_ano1_ajustados,
                 float(data.get("custos_ano2", 0) or 0),
                 float(data.get("custos_ano3", 0) or 0),
                 float(data.get("custos_ano4", 0) or 0),
@@ -275,126 +475,233 @@ class FinancialDiagnostic:
         else:
             return "Atenção", "danger"    # Vermelho
     
-    def _calculate_rentability_score(self, data):
+    def _calculate_rentability_score(self, data, integrated_data=None):
         """Calcula o score de rentabilidade."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+            
         try:
-            # Extrai dados relevantes do questionário
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
-            receita_ano2 = float(data.get("receita_ano2", 0) or 0)
-            custos_ano1 = float(data.get("custos_ano1", 0) or 0)
-            custos_ano2 = float(data.get("custos_ano2", 0) or 0)
-            
-            # Calcula margens
-            if receita_ano1 > 0:
-                margem_ano1 = (receita_ano1 - custos_ano1) / receita_ano1 * 100
-            else:
-                margem_ano1 = 0
+            # Verifica se temos dados de margem da DRE
+            if integrated_data.get("has_document_data") and "margem_liquida" in integrated_data.get("financial_ratios", {}):
+                # Usa margem da DRE
+                margem_liquida = integrated_data["financial_ratios"]["margem_liquida"] * 100
                 
-            if receita_ano2 > 0:
-                margem_ano2 = (receita_ano2 - custos_ano2) / receita_ano2 * 100
-            else:
-                margem_ano2 = 0
-            
-            # Calcula tendência
-            tendencia = "estável"
-            if margem_ano2 > margem_ano1 * 1.1:  # 10% de aumento
-                tendencia = "crescente"
-            elif margem_ano2 < margem_ano1 * 0.9:  # 10% de queda
-                tendencia = "decrescente"
-            
-            # Calcula score (0-10)
-            score = 0
-            if margem_ano1 > 0 or margem_ano2 > 0:
-                media_margem = (margem_ano1 + margem_ano2) / 2
-                # Pontuação baseada na margem média
-                if media_margem >= 30:
+                # Calcula score (0-10) baseado na margem líquida
+                if margem_liquida >= 30:
                     score = 10
-                elif media_margem >= 25:
+                elif margem_liquida >= 25:
                     score = 9
-                elif media_margem >= 20:
+                elif margem_liquida >= 20:
                     score = 8
-                elif media_margem >= 15:
+                elif margem_liquida >= 15:
                     score = 7
-                elif media_margem >= 10:
+                elif margem_liquida >= 10:
                     score = 6
-                elif media_margem >= 5:
+                elif margem_liquida >= 5:
                     score = 5
                 else:
-                    score = max(0, min(4, media_margem))
+                    score = max(0, min(4, margem_liquida))
                 
-                # Ajuste pela tendência
-                if tendencia == "crescente":
-                    score = min(10, score + 1)
-                elif tendencia == "decrescente":
-                    score = max(0, score - 1)
-            
-            return {
-                "score": score,
-                "margem_media": round((margem_ano1 + margem_ano2) / 2, 2) if (margem_ano1 or margem_ano2) else None,
-                "tendencia": tendencia,
-                "avaliacao": self._get_evaluation_text(score)
-            }
+                return {
+                    "score": score,
+                    "margem_media": round(margem_liquida, 2),
+                    "tendencia": "baseado em documentos",
+                    "avaliacao": self._get_evaluation_text(score)
+                }
+            else:
+                # Usa dados do questionário
+                # Extrai dados relevantes do questionário
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                receita_ano2 = float(data.get("receita_ano2", 0) or 0)
+                custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+                custos_ano2 = float(data.get("custos_ano2", 0) or 0)
+                
+                # Calcula margens
+                if receita_ano1 > 0:
+                    margem_ano1 = (receita_ano1 - custos_ano1) / receita_ano1 * 100
+                else:
+                    margem_ano1 = 0
+                    
+                if receita_ano2 > 0:
+                    margem_ano2 = (receita_ano2 - custos_ano2) / receita_ano2 * 100
+                else:
+                    margem_ano2 = 0
+                
+                # Calcula tendência
+                tendencia = "estável"
+                if margem_ano2 > margem_ano1 * 1.1:  # 10% de aumento
+                    tendencia = "crescente"
+                elif margem_ano2 < margem_ano1 * 0.9:  # 10% de queda
+                    tendencia = "decrescente"
+                
+                # Calcula score (0-10)
+                score = 0
+                if margem_ano1 > 0 or margem_ano2 > 0:
+                    media_margem = (margem_ano1 + margem_ano2) / 2
+                    # Pontuação baseada na margem média
+                    if media_margem >= 30:
+                        score = 10
+                    elif media_margem >= 25:
+                        score = 9
+                    elif media_margem >= 20:
+                        score = 8
+                    elif media_margem >= 15:
+                        score = 7
+                    elif media_margem >= 10:
+                        score = 6
+                    elif media_margem >= 5:
+                        score = 5
+                    else:
+                        score = max(0, min(4, media_margem))
+                    
+                    # Ajuste pela tendência
+                    if tendencia == "crescente":
+                        score = min(10, score + 1)
+                    elif tendencia == "decrescente":
+                        score = max(0, score - 1)
+                
+                return {
+                    "score": score,
+                    "margem_media": round((margem_ano1 + margem_ano2) / 2, 2) if (margem_ano1 or margem_ano2) else None,
+                    "tendencia": tendencia,
+                    "avaliacao": self._get_evaluation_text(score)
+                }
         except Exception as e:
             logger.warning(f"Erro ao calcular score de rentabilidade: {e}")
             return {"score": None, "avaliacao": "Dados insuficientes para análise"}
     
-    def _calculate_liquidity_score(self, data):
+    def _calculate_liquidity_score(self, data, integrated_data=None):
         """Calcula o score de liquidez."""
-        try:
-            # Para o MVP, usamos uma estimativa baseada na relação entre receitas e custos
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
-            custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
             
-            if receita_ano1 > 0 and custos_ano1 > 0:
-                # Índice de liquidez estimado (receita/custos)
-                indice_liquidez = receita_ano1 / custos_ano1
+        try:
+            # Verifica se temos dados de liquidez do balanço
+            if integrated_data.get("has_document_data") and "liquidez_corrente" in integrated_data.get("financial_ratios", {}):
+                # Usa índice de liquidez do balanço
+                liquidez_corrente = integrated_data["financial_ratios"]["liquidez_corrente"]
                 
-                # Calcula score (0-10)
-                if indice_liquidez >= 2.0:
+                # Calcula score (0-10) baseado na liquidez corrente
+                if liquidez_corrente >= 2.0:
                     score = 10
-                elif indice_liquidez >= 1.8:
+                elif liquidez_corrente >= 1.8:
                     score = 9
-                elif indice_liquidez >= 1.5:
+                elif liquidez_corrente >= 1.5:
                     score = 8
-                elif indice_liquidez >= 1.3:
+                elif liquidez_corrente >= 1.3:
                     score = 7
-                elif indice_liquidez >= 1.1:
+                elif liquidez_corrente >= 1.1:
                     score = 6
-                elif indice_liquidez >= 1.0:
+                elif liquidez_corrente >= 1.0:
                     score = 5
-                elif indice_liquidez >= 0.9:
+                elif liquidez_corrente >= 0.8:
                     score = 4
-                elif indice_liquidez >= 0.8:
+                elif liquidez_corrente >= 0.6:
                     score = 3
-                elif indice_liquidez >= 0.7:
+                elif liquidez_corrente >= 0.4:
                     score = 2
-                elif indice_liquidez >= 0.6:
-                    score = 1
                 else:
-                    score = 0
+                    score = 1
                 
                 return {
                     "score": score,
-                    "indice_liquidez": round(indice_liquidez, 2),
+                    "indice_liquidez": round(liquidez_corrente, 2),
+                    "fonte": "balanço patrimonial",
                     "avaliacao": self._get_evaluation_text(score)
                 }
             else:
-                return {"score": None, "avaliacao": "Dados insuficientes para análise"}
+                # Para o MVP, usamos uma estimativa baseada na relação entre receitas e custos
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+                
+                if receita_ano1 > 0 and custos_ano1 > 0:
+                    # Índice de liquidez estimado (receita/custos)
+                    indice_liquidez = receita_ano1 / custos_ano1
+                    
+                    # Calcula score (0-10)
+                    if indice_liquidez >= 2.0:
+                        score = 10
+                    elif indice_liquidez >= 1.8:
+                        score = 9
+                    elif indice_liquidez >= 1.5:
+                        score = 8
+                    elif indice_liquidez >= 1.3:
+                        score = 7
+                    elif indice_liquidez >= 1.1:
+                        score = 6
+                    elif indice_liquidez >= 1.0:
+                        score = 5
+                    elif indice_liquidez >= 0.8:
+                        score = 4
+                    elif indice_liquidez >= 0.6:
+                        score = 3
+                    elif indice_liquidez >= 0.4:
+                        score = 2
+                    else:
+                        score = 1
+                    
+                    return {
+                        "score": score,
+                        "indice_liquidez": round(indice_liquidez, 2),
+                        "fonte": "estimativa baseada em receitas/custos",
+                        "avaliacao": self._get_evaluation_text(score)
+                    }
+                else:
+                    return {"score": None, "avaliacao": "Dados insuficientes para análise"}
         except Exception as e:
             logger.warning(f"Erro ao calcular score de liquidez: {e}")
             return {"score": None, "avaliacao": "Dados insuficientes para análise"}
     
-    def _calculate_debt_score(self, data):
+    def _calculate_debt_score(self, data, integrated_data=None):
         """Calcula o score de endividamento."""
-        try:
-            # Para o MVP, usamos uma estimativa baseada na relação entre receitas futuras e atuais
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
-            receita_ano2 = float(data.get("receita_ano2", 0) or 0)
-            receita_ano3 = float(data.get("receita_ano3", 0) or 0)
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
             
-            if receita_ano1 > 0:
-                # Calculamos a taxa de crescimento projetada
-                if receita_ano2 > 0 and receita_ano3 > 0:
+        try:
+            # Verifica se temos dados de endividamento do balanço
+            if integrated_data.get("has_document_data") and "endividamento_geral" in integrated_data.get("financial_ratios", {}):
+                # Usa índice de endividamento do balanço
+                endividamento_geral = integrated_data["financial_ratios"]["endividamento_geral"]
+                
+                # Calcula score (0-10) baseado no endividamento geral
+                if endividamento_geral <= 0.3:
+                    score = 10
+                elif endividamento_geral <= 0.4:
+                    score = 9
+                elif endividamento_geral <= 0.5:
+                    score = 8
+                elif endividamento_geral <= 0.6:
+                    score = 7
+                elif endividamento_geral <= 0.7:
+                    score = 6
+                elif endividamento_geral <= 0.8:
+                    score = 5
+                elif endividamento_geral <= 0.9:
+                    score = 4
+                elif endividamento_geral <= 1.0:
+                    score = 3
+                elif endividamento_geral <= 1.2:
+                    score = 2
+                else:
+                    score = 1
+                
+                return {
+                    "score": score,
+                    "indice_endividamento": round(endividamento_geral * 100, 2),
+                    "fonte": "balanço patrimonial",
+                    "avaliacao": self._get_evaluation_text(score)
+                }
+            else:
+                # Para o MVP, usamos uma estimativa baseada no crescimento projetado
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                receita_ano2 = float(data.get("receita_ano2", 0) or 0)
+                receita_ano3 = float(data.get("receita_ano3", 0) or 0)
+                
+                if receita_ano1 > 0 and receita_ano2 > 0 and receita_ano3 > 0:
+                    # Calcula taxas de crescimento
                     taxa_crescimento_ano2 = (receita_ano2 - receita_ano1) / receita_ano1
                     taxa_crescimento_ano3 = (receita_ano3 - receita_ano2) / receita_ano2
                     
@@ -419,26 +726,48 @@ class FinancialDiagnostic:
                 else:
                     # Sem projeções futuras, assumimos score médio
                     return {"score": 5, "avaliacao": "Médio (dados limitados)"}
-            else:
+                
                 return {"score": None, "avaliacao": "Dados insuficientes para análise"}
         except Exception as e:
             logger.warning(f"Erro ao calcular score de endividamento: {e}")
             return {"score": None, "avaliacao": "Dados insuficientes para análise"}
     
-    def _calculate_efficiency_score(self, data):
+    def _calculate_efficiency_score(self, data, integrated_data=None):
         """Calcula o score de eficiência operacional."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+            
         try:
-            # Extrai dados relevantes
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
-            custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+            # Extrai dados relevantes, priorizando dados de documentos quando disponíveis
+            if integrated_data.get("has_document_data") and "adjusted_revenue" in integrated_data:
+                receita_ano1 = integrated_data["adjusted_revenue"]
+            else:
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                
+            if integrated_data.get("has_document_data") and "adjusted_costs" in integrated_data:
+                custos_ano1 = integrated_data["adjusted_costs"]
+            else:
+                custos_ano1 = float(data.get("custos_ano1", 0) or 0)
+                
             num_funcionarios = float(data.get("num_funcionarios", 0) or 0)
+            
+            # Verifica se temos dados de prazos médios
+            has_prazo_data = False
+            if integrated_data.get("has_document_data"):
+                prazo_recebimento = integrated_data.get("financial_ratios", {}).get("prazo_medio_recebimento")
+                prazo_pagamento = integrated_data.get("financial_ratios", {}).get("prazo_medio_pagamento")
+                has_prazo_data = prazo_recebimento is not None and prazo_pagamento is not None
             
             if receita_ano1 > 0 and num_funcionarios > 0:
                 # Receita por funcionário
                 receita_por_funcionario = receita_ano1 / num_funcionarios
                 
                 # Margem operacional
-                margem_operacional = (receita_ano1 - custos_ano1) / receita_ano1 * 100 if receita_ano1 > 0 else 0
+                if "margem_liquida" in integrated_data.get("financial_ratios", {}):
+                    margem_operacional = integrated_data["financial_ratios"]["margem_liquida"] * 100
+                else:
+                    margem_operacional = (receita_ano1 - custos_ano1) / receita_ano1 * 100 if receita_ano1 > 0 else 0
                 
                 # Calcula score (0-10) baseado na receita por funcionário e margem
                 score_receita = 0
@@ -479,26 +808,60 @@ class FinancialDiagnostic:
                 else:
                     score_margem = max(0, min(4, margem_operacional))
                 
-                # Score final é a média dos dois
-                score = (score_receita + score_margem) / 2
+                # Score adicional para ciclo financeiro, se disponível
+                score_ciclo = None
+                if has_prazo_data:
+                    ciclo_financeiro = prazo_recebimento - prazo_pagamento
+                    if ciclo_financeiro <= 0:
+                        score_ciclo = 10  # Excelente: recebe antes de pagar
+                    elif ciclo_financeiro <= 15:
+                        score_ciclo = 8
+                    elif ciclo_financeiro <= 30:
+                        score_ciclo = 6
+                    elif ciclo_financeiro <= 45:
+                        score_ciclo = 4
+                    else:
+                        score_ciclo = 2  # Ruim: demora muito para receber
                 
-                return {
+                # Score final é a média dos scores disponíveis
+                if score_ciclo is not None:
+                    score = (score_receita + score_margem + score_ciclo) / 3
+                else:
+                    score = (score_receita + score_margem) / 2
+                
+                result = {
                     "score": round(score, 1),
                     "receita_por_funcionario": round(receita_por_funcionario, 2),
                     "margem_operacional": round(margem_operacional, 2),
                     "avaliacao": self._get_evaluation_text(score)
                 }
+                
+                # Adiciona informações de ciclo financeiro, se disponíveis
+                if has_prazo_data:
+                    result["ciclo_financeiro"] = prazo_recebimento - prazo_pagamento
+                    result["prazo_recebimento"] = prazo_recebimento
+                    result["prazo_pagamento"] = prazo_pagamento
+                
+                return result
             else:
                 return {"score": None, "avaliacao": "Dados insuficientes para análise"}
         except Exception as e:
             logger.warning(f"Erro ao calcular score de eficiência: {e}")
             return {"score": None, "avaliacao": "Dados insuficientes para análise"}
     
-    def _calculate_growth_score(self, data):
+    def _calculate_growth_score(self, data, integrated_data=None):
         """Calcula o score de crescimento."""
+        # Se não temos dados integrados, inicializa um dicionário vazio
+        if integrated_data is None:
+            integrated_data = {"has_document_data": False}
+            
         try:
-            # Extrai dados de receita projetada
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+            # Extrai dados de receita projetada, priorizando dados ajustados se disponíveis
+            if integrated_data.get("has_document_data") and "adjusted_revenue" in integrated_data:
+                receita_ano1 = integrated_data["adjusted_revenue"]
+            else:
+                receita_ano1 = float(data.get("receita_ano1", 0) or 0)
+                
             receita_ano2 = float(data.get("receita_ano2", 0) or 0)
             receita_ano3 = float(data.get("receita_ano3", 0) or 0)
             receita_ano4 = float(data.get("receita_ano4", 0) or 0)
@@ -559,7 +922,7 @@ class FinancialDiagnostic:
         else:
             return "Atenção"
     
-    def _generate_recommendations(self, indicators):
+    def _generate_recommendations(self, indicators, integrated_data=None):
         """Gera recomendações com base nos indicadores."""
         recommendations = []
         
@@ -581,6 +944,25 @@ class FinancialDiagnostic:
         # Recomendações para eficiência
         if indicators["eficiencia"]["score"] is not None and indicators["eficiencia"]["score"] < 5:
             recommendations.append("Otimizar processos operacionais e revisar produtividade por funcionário.")
+            
+        # Recomendações específicas baseadas em dados de documentos
+        if integrated_data and integrated_data.get("has_document_data"):
+            # Recomendações baseadas no ciclo financeiro
+            if "prazo_medio_recebimento" in integrated_data.get("financial_ratios", {}) and "prazo_medio_pagamento" in integrated_data.get("financial_ratios", {}):
+                prazo_recebimento = integrated_data["financial_ratios"]["prazo_medio_recebimento"]
+                prazo_pagamento = integrated_data["financial_ratios"]["prazo_medio_pagamento"]
+                ciclo_financeiro = prazo_recebimento - prazo_pagamento
+                
+                if ciclo_financeiro > 30:
+                    recommendations.append(f"Reduzir o ciclo financeiro atual de {ciclo_financeiro} dias, negociando melhores prazos com fornecedores ou clientes.")
+            
+            # Recomendações baseadas na liquidez
+            if "liquidez_corrente" in integrated_data.get("financial_ratios", {}) and integrated_data["financial_ratios"]["liquidez_corrente"] < 1.0:
+                recommendations.append("Aumentar o capital de giro para melhorar a liquidez corrente que está abaixo do ideal.")
+            
+            # Recomendações baseadas no endividamento
+            if "endividamento_geral" in integrated_data.get("financial_ratios", {}) and integrated_data["financial_ratios"]["endividamento_geral"] > 0.7:
+                recommendations.append("Reduzir o nível de endividamento geral que está acima do recomendado.")
         
         # Recomendações gerais se não houver específicas
         if not recommendations:
@@ -589,18 +971,27 @@ class FinancialDiagnostic:
         
         return recommendations
     
-    def _generate_summary(self, overall_score):
+    def _generate_summary(self, overall_score, integrated_data=None):
         """Gera um resumo com base na pontuação geral."""
+        # Base do resumo pela pontuação
         if overall_score >= 8:
-            return "A empresa apresenta indicadores financeiros sólidos, com boas perspectivas de crescimento sustentável."
+            base_summary = "A empresa apresenta indicadores financeiros sólidos, com boas perspectivas de crescimento sustentável."
         elif overall_score >= 6:
-            return "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas."
+            base_summary = "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas."
         elif overall_score >= 4:
-            return "A empresa apresenta indicadores financeiros regulares, com necessidade de atenção em áreas específicas."
+            base_summary = "A empresa apresenta indicadores financeiros regulares, com necessidade de atenção em áreas específicas."
         elif overall_score > 0:
-            return "A empresa apresenta indicadores financeiros preocupantes, necessitando de ações corretivas imediatas."
+            base_summary = "A empresa apresenta indicadores financeiros preocupantes, necessitando de ações corretivas imediatas."
         else:
             return "Não foi possível gerar um diagnóstico completo devido à insuficiência de dados."
+        
+        # Adiciona informações sobre a fonte dos dados
+        if integrated_data and integrated_data.get("has_document_data"):
+            data_source = " Este diagnóstico considera tanto as respostas do questionário quanto os documentos financeiros enviados."
+        else:
+            data_source = " Este diagnóstico é baseado apenas nas respostas do questionário."
+        
+        return base_summary + data_source
     
     def _format_currency(self, value):
         """Formata um valor monetário."""
@@ -752,67 +1143,50 @@ class ValuationCalculator:
         # Obtém a taxa de desconto (ou usa o padrão)
         taxa_desconto = taxas_desconto.get(setor, taxas_desconto["Outros"])
         
-        # Calcula os fluxos de caixa para cada ano
+        # Calcula fluxos de caixa (simplificado: receita - custos)
         fluxos_caixa = []
         for i in range(len(receitas)):
-            if receitas[i] > 0:
-                # Estimativa simplificada: Lucro = Receita - Custos
-                lucro = receitas[i] - custos[i]
-                
-                # Estimativa de fluxo de caixa (lucro + depreciação estimada - capex estimado)
-                # Para simplificar, assumimos que depreciação = capex em média
-                fluxo_caixa = lucro
-                fluxos_caixa.append(fluxo_caixa)
+            if i < len(custos):
+                fluxo = receitas[i] - custos[i]
             else:
-                fluxos_caixa.append(0)
+                # Se não temos custos para este ano, estimamos como 60% da receita
+                fluxo = receitas[i] * 0.4
+            fluxos_caixa.append(fluxo)
         
-        # Calcula o valor presente dos fluxos de caixa
+        # Calcula valor presente dos fluxos de caixa
         valor_presente = 0
         for i, fluxo in enumerate(fluxos_caixa):
             valor_presente += fluxo / math.pow(1 + taxa_desconto, i + 1)
         
-        # Calcula o valor terminal (perpetuidade)
-        # Assumindo crescimento perpétuo de 3%
-        if fluxos_caixa[-1] > 0:
-            taxa_crescimento_perpetuo = 0.03
-            valor_terminal = fluxos_caixa[-1] * (1 + taxa_crescimento_perpetuo) / (taxa_desconto - taxa_crescimento_perpetuo)
-            valor_terminal_presente = valor_terminal / math.pow(1 + taxa_desconto, len(fluxos_caixa))
-        else:
-            valor_terminal_presente = 0
+        # Calcula valor terminal (perpetuidade com crescimento de 3%)
+        taxa_crescimento_perpetuidade = 0.03
+        valor_terminal = fluxos_caixa[-1] * (1 + taxa_crescimento_perpetuidade) / (taxa_desconto - taxa_crescimento_perpetuidade)
+        valor_terminal_presente = valor_terminal / math.pow(1 + taxa_desconto, len(fluxos_caixa))
         
         # Valuation final é a soma do valor presente dos fluxos + valor terminal
         valuation = valor_presente + valor_terminal_presente
         
         return valuation
     
+    def _generate_assumptions(self, data):
+        """Gera premissas utilizadas no cálculo do valuation."""
+        return [
+            "Projeções de receita e custos conforme informado no questionário",
+            "Taxa de crescimento na perpetuidade de 3%",
+            "Múltiplos de receita ajustados por setor e modelo de negócio",
+            "Horizonte de projeção de 5 anos"
+        ]
+    
     def _format_currency(self, value):
         """Formata um valor monetário."""
+        if value is None or value == 0:
+            return "R$ 0"
+            
         if value >= 1_000_000_000:  # Bilhões
             return f"R$ {value/1_000_000_000:.2f} bilhões"
         elif value >= 1_000_000:  # Milhões
             return f"R$ {value/1_000_000:.2f} milhões"
-        else:  # Milhares
+        elif value >= 1_000:  # Milhares
             return f"R$ {value/1_000:.2f} mil"
-    
-    def _generate_assumptions(self, data):
-        """Gera texto com as premissas utilizadas no cálculo."""
-        setor = data.get("setor_atuacao", "não especificado")
-        modelo = data.get("modelo_negocios", "não especificado")
-        
-        assumptions = f"Valuation baseado em projeções para empresa do setor '{setor}' "
-        assumptions += f"com modelo de negócios '{modelo}'. "
-        
-        # Adiciona informações sobre crescimento se disponíveis
-        try:
-            receita_ano1 = float(data.get("receita_ano1", 0) or 0)
-            receita_ano5 = float(data.get("receita_ano5", 0) or 0)
-            
-            if receita_ano1 > 0 and receita_ano5 > 0:
-                cagr = (math.pow(receita_ano5 / receita_ano1, 1/4) - 1) * 100
-                assumptions += f"CAGR projetado de {cagr:.2f}% ao ano. "
-        except:
-            pass
-        
-        assumptions += "Cálculo considera múltiplos de receita e fluxo de caixa descontado."
-        
-        return assumptions
+        else:
+            return f"R$ {value:.2f}"

@@ -1,0 +1,391 @@
+{
+  "without_docs": {
+    "status": "Baseado apenas nas respostas do questionário",
+    "summary": "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas. Este diagnóstico é baseado apenas nas respostas do questionário.",
+    "recommendations": [
+      "Manter monitoramento constante dos indicadores financeiros.",
+      "Considerar análise mais detalhada com dados financeiros completos."
+    ],
+    "indicators": {
+      "rentabilidade": {
+        "score": 10,
+        "margem_media": 31.67,
+        "tendencia": "crescente",
+        "avaliacao": "Excelente"
+      },
+      "liquidez": {
+        "score": 7,
+        "indice_liquidez": 1.43,
+        "fonte": "estimativa baseada em receitas/custos",
+        "avaliacao": "Muito Bom"
+      },
+      "endividamento": {
+        "score": 6,
+        "taxa_crescimento_media": 22.5,
+        "avaliacao": "Bom"
+      },
+      "eficiencia": {
+        "score": 7.0,
+        "receita_por_funcionario": 100000.0,
+        "margem_operacional": 30.0,
+        "avaliacao": "Muito Bom"
+      },
+      "crescimento": {
+        "score": 5,
+        "cagr": 21.79,
+        "avaliacao": "Bom"
+      }
+    },
+    "overall_score": 7.0,
+    "dashboard": {
+      "health_status": "Saudável",
+      "health_color": "success",
+      "kpis": {
+        "faturamento_anual": 1000000.0,
+        "faturamento_anual_formatado": "R$ 1.00 milhões",
+        "margem_operacional": 30.0,
+        "crescimento_projetado": 21.8,
+        "estrutura_custos": 60.0,
+        "produtividade_media": 100000,
+        "produtividade_media_formatada": "R$ 100.00 mil"
+      },
+      "chart_data": {
+        "receitas": [
+          1000000.0,
+          1200000.0,
+          1500000.0,
+          1800000.0,
+          2200000.0
+        ],
+        "custos": [
+          700000.0,
+          800000.0,
+          1000000.0,
+          1200000.0,
+          1400000.0
+        ],
+        "anos": [
+          "Ano 1",
+          "Ano 2",
+          "Ano 3",
+          "Ano 4",
+          "Ano 5"
+        ],
+        "custos_fixos_pct": 60.0,
+        "custos_variaveis_pct": 40.0
+      },
+      "business_info": {
+        "modelo_negocios": "Assinatura",
+        "principais_produtos": "Software de gestão financeira",
+        "principais_riscos": "Concorrência",
+        "setor_atuacao": "Tecnologia",
+        "num_funcionarios": 10,
+        "produtividade_media": 100000
+      },
+      "market_data": {
+        "tam_valor": "Não informado",
+        "sam_valor": "Não informado",
+        "som_valor": "Não informado",
+        "tam_pct": 100,
+        "sam_pct": 60,
+        "som_pct": 30
+      },
+      "cost_structure": {
+        "fixos_pct": 60.0,
+        "variaveis_pct": 40.0
+      }
+    }
+  },
+  "with_docs": {
+    "status": "Baseado nas respostas do questionário e documentos enviados",
+    "summary": "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas. Este diagnóstico considera tanto as respostas do questionário quanto os documentos financeiros enviados.",
+    "recommendations": [
+      "Manter monitoramento constante dos indicadores financeiros.",
+      "Considerar análise mais detalhada com dados financeiros completos."
+    ],
+    "indicators": {
+      "rentabilidade": {
+        "score": 7,
+        "margem_media": 18.18,
+        "tendencia": "baseado em documentos",
+        "avaliacao": "Muito Bom"
+      },
+      "liquidez": {
+        "score": 8,
+        "indice_liquidez": 1.6,
+        "fonte": "balanço patrimonial",
+        "avaliacao": "Muito Bom"
+      },
+      "endividamento": {
+        "score": 7,
+        "indice_endividamento": 60.0,
+        "fonte": "balanço patrimonial",
+        "avaliacao": "Muito Bom"
+      },
+      "eficiencia": {
+        "score": 6.3,
+        "receita_por_funcionario": 100000.0,
+        "margem_operacional": 18.18,
+        "avaliacao": "Bom",
+        "ciclo_financeiro": 15,
+        "prazo_recebimento": 45,
+        "prazo_pagamento": 30
+      },
+      "crescimento": {
+        "score": 5,
+        "cagr": 21.79,
+        "avaliacao": "Bom"
+      }
+    },
+    "overall_score": 6.7,
+    "dashboard": {
+      "health_status": "Estável",
+      "health_color": "warning",
+      "kpis": {
+        "faturamento_anual": 1000000.0,
+        "faturamento_anual_formatado": "R$ 1.00 milhões",
+        "margem_operacional": 18.181818181818183,
+        "crescimento_projetado": 21.8,
+        "estrutura_custos": 60.0,
+        "produtividade_media": 100000,
+        "produtividade_media_formatada": "R$ 100.00 mil"
+      },
+      "chart_data": {
+        "receitas": [
+          1000000.0,
+          1200000.0,
+          1500000.0,
+          1800000.0,
+          2200000.0
+        ],
+        "custos": [
+          700000.0,
+          800000.0,
+          1000000.0,
+          1200000.0,
+          1400000.0
+        ],
+        "anos": [
+          "Ano 1",
+          "Ano 2",
+          "Ano 3",
+          "Ano 4",
+          "Ano 5"
+        ],
+        "custos_fixos_pct": 60.0,
+        "custos_variaveis_pct": 40.0
+      },
+      "business_info": {
+        "modelo_negocios": "Assinatura",
+        "principais_produtos": "Software de gestão financeira",
+        "principais_riscos": "Concorrência",
+        "setor_atuacao": "Tecnologia",
+        "num_funcionarios": 10,
+        "produtividade_media": 100000
+      },
+      "market_data": {
+        "tam_valor": "Não informado",
+        "sam_valor": "Não informado",
+        "som_valor": "Não informado",
+        "tam_pct": 100,
+        "sam_pct": 60,
+        "som_pct": 30
+      },
+      "cost_structure": {
+        "fixos_pct": 60.0,
+        "variaveis_pct": 40.0
+      }
+    }
+  },
+  "conflicting": {
+    "status": "Baseado nas respostas do questionário e documentos enviados",
+    "summary": "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas. Este diagnóstico considera tanto as respostas do questionário quanto os documentos financeiros enviados.",
+    "recommendations": [
+      "Manter monitoramento constante dos indicadores financeiros.",
+      "Considerar análise mais detalhada com dados financeiros completos."
+    ],
+    "indicators": {
+      "rentabilidade": {
+        "score": 7,
+        "margem_media": 18.18,
+        "tendencia": "baseado em documentos",
+        "avaliacao": "Muito Bom"
+      },
+      "liquidez": {
+        "score": 7,
+        "indice_liquidez": 1.43,
+        "fonte": "estimativa baseada em receitas/custos",
+        "avaliacao": "Muito Bom"
+      },
+      "endividamento": {
+        "score": 6,
+        "taxa_crescimento_media": 22.5,
+        "avaliacao": "Bom"
+      },
+      "eficiencia": {
+        "score": 6.0,
+        "receita_por_funcionario": 155000.0,
+        "margem_operacional": 18.18,
+        "avaliacao": "Bom"
+      },
+      "crescimento": {
+        "score": 5,
+        "cagr": 29.8,
+        "avaliacao": "Bom"
+      }
+    },
+    "overall_score": 6.2,
+    "dashboard": {
+      "health_status": "Estável",
+      "health_color": "warning",
+      "kpis": {
+        "faturamento_anual": 1550000.0,
+        "faturamento_anual_formatado": "R$ 1.55 milhões",
+        "margem_operacional": 18.181818181818183,
+        "crescimento_projetado": 29.8,
+        "estrutura_custos": 60.0,
+        "produtividade_media": 155000,
+        "produtividade_media_formatada": "R$ 155.00 mil"
+      },
+      "chart_data": {
+        "receitas": [
+          1550000.0,
+          2400000.0,
+          3000000.0,
+          3600000.0,
+          4400000.0
+        ],
+        "custos": [
+          1025000.0,
+          1600000.0,
+          2000000.0,
+          2400000.0,
+          2800000.0
+        ],
+        "anos": [
+          "Ano 1",
+          "Ano 2",
+          "Ano 3",
+          "Ano 4",
+          "Ano 5"
+        ],
+        "custos_fixos_pct": 60.0,
+        "custos_variaveis_pct": 40.0
+      },
+      "business_info": {
+        "modelo_negocios": "Assinatura",
+        "principais_produtos": "Software de gestão financeira",
+        "principais_riscos": "Concorrência",
+        "setor_atuacao": "Tecnologia",
+        "num_funcionarios": 10,
+        "produtividade_media": 155000
+      },
+      "market_data": {
+        "tam_valor": "Não informado",
+        "sam_valor": "Não informado",
+        "som_valor": "Não informado",
+        "tam_pct": 100,
+        "sam_pct": 60,
+        "som_pct": 30
+      },
+      "cost_structure": {
+        "fixos_pct": 60.0,
+        "variaveis_pct": 40.0
+      }
+    }
+  },
+  "missing": {
+    "status": "Baseado apenas nas respostas do questionário",
+    "summary": "A empresa apresenta indicadores financeiros satisfatórios, com potencial para melhorias em algumas áreas. Este diagnóstico é baseado apenas nas respostas do questionário.",
+    "recommendations": [
+      "Investigar causas da queda de rentabilidade e implementar ações corretivas."
+    ],
+    "indicators": {
+      "rentabilidade": {
+        "score": 6,
+        "margem_media": 15.0,
+        "tendencia": "decrescente",
+        "avaliacao": "Bom"
+      },
+      "liquidez": {
+        "score": 7,
+        "indice_liquidez": 1.43,
+        "fonte": "estimativa baseada em receitas/custos",
+        "avaliacao": "Muito Bom"
+      },
+      "endividamento": {
+        "score": 5,
+        "avaliacao": "Médio (dados limitados)"
+      },
+      "eficiencia": {
+        "score": 7.0,
+        "receita_por_funcionario": 100000.0,
+        "margem_operacional": 30.0,
+        "avaliacao": "Muito Bom"
+      },
+      "crescimento": {
+        "score": null,
+        "avaliacao": "Dados insuficientes para análise"
+      }
+    },
+    "overall_score": 6.2,
+    "dashboard": {
+      "health_status": "Estável",
+      "health_color": "warning",
+      "kpis": {
+        "faturamento_anual": 1000000.0,
+        "faturamento_anual_formatado": "R$ 1.00 milhões",
+        "margem_operacional": 30.0,
+        "crescimento_projetado": 0,
+        "estrutura_custos": 60.0,
+        "produtividade_media": 100000,
+        "produtividade_media_formatada": "R$ 100.00 mil"
+      },
+      "chart_data": {
+        "receitas": [
+          1000000.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "custos": [
+          700000.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "anos": [
+          "Ano 1",
+          "Ano 2",
+          "Ano 3",
+          "Ano 4",
+          "Ano 5"
+        ],
+        "custos_fixos_pct": 60.0,
+        "custos_variaveis_pct": 40.0
+      },
+      "business_info": {
+        "modelo_negocios": "Venda direta",
+        "principais_produtos": "Vendas de produtos",
+        "principais_riscos": "Concorrência",
+        "setor_atuacao": "Tecnologia",
+        "num_funcionarios": 10,
+        "produtividade_media": 100000
+      },
+      "market_data": {
+        "tam_valor": "Não informado",
+        "sam_valor": "Não informado",
+        "som_valor": "Não informado",
+        "tam_pct": 100,
+        "sam_pct": 60,
+        "som_pct": 30
+      },
+      "cost_structure": {
+        "fixos_pct": 60.0,
+        "variaveis_pct": 40.0
+      }
+    }
+  }
+}
