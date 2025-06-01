@@ -491,16 +491,14 @@ def questionnaire_view(company_id):
     questionnaire_template = QuestionnaireTemplate.get_template()
     existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).order_by(Questionnaire.updated_at.desc()).first()
     
-    # Correção: Garantir que existing_responses seja sempre um    # Carregar respostas existentes se houver
-    existing_questionnaire = Questionnaire.query.filter_by(company_id=company_id).first()
+    # Correção: Garantir que existing_responses seja sempre um dicionário, mesmo se existing_questionnaire for None
     existing_responses = {}
     if existing_questionnaire and existing_questionnaire.responses:
         try:
-            # Carregar diretamente como dicionário plano
             existing_responses = json.loads(existing_questionnaire.responses)
-            app.logger.info(f"Carregadas {len(existing_responses)} respostas existentes para empresa {company_id}")
-        except Exception as e:
-            app.logger.error(f"Erro ao carregar respostas existentes: {e}")
+        except json.JSONDecodeError:
+            app.logger.error(f"Erro ao decodificar JSON das respostas para empresa {company_id}")
+            existing_responses = {}
 
     if request.method == "POST":
         # Verificar token CSRF
@@ -509,18 +507,19 @@ def questionnaire_view(company_id):
             flash("Erro de validação do formulário. Tente novamente.", "danger")
             return redirect(url_for("questionnaire_view", company_id=company_id))
 
-        # Coletar todas as respostas do formulário como dicionário plano
+        # Coletar todas as respostas do formulário
         responses = {}
         for section in questionnaire_template.get("sections", []):
+            section_id = section.get("id", "")
+            responses[section_id] = {}
+            
             for question in section.get("questions", []):
                 q_id = question.get("id", "")
                 if q_id:
                     # Obter o valor do formulário
                     value = request.form.get(q_id, "")
-                    # Armazenar diretamente no dicionário plano
-                    responses[q_id] = value
-                    
-        app.logger.info(f"Coletadas {len(responses)} respostas do formulário para empresa {company_id}")
+                    # Armazenar no dicionário de respostas
+                    responses[section_id][q_id] = value
 
         # Serializar para JSON
         try:
@@ -675,12 +674,21 @@ def financial_diagnostic_view(company_id):
     # Processar dados do questionário se existir
     if questionnaire and questionnaire.responses:
         try:
-            # Usar diretamente o dicionário plano de respostas
-            questionnaire_data = json.loads(questionnaire.responses)
-            app.logger.info(f"Dados do questionário processados para empresa {company_id}: {len(questionnaire_data)} campos")
-        except Exception as e:
-            app.logger.error(f"Erro ao processar dados do questionário: {e}")
-            questionnaire_data = {}
+            # Deserializar JSON para dicionário
+            responses_dict = json.loads(questionnaire.responses)
+            
+            # Extrair respostas de todas as seções para um único dicionário plano
+            for section_id, questions in responses_dict.items():
+                if isinstance(questions, dict):
+                    # Adicionar todas as respostas ao dicionário principal
+                    questionnaire_data.update(questions)
+                else:
+                    # Caso a estrutura seja diferente, tentar usar diretamente
+                    questionnaire_data[section_id] = questions
+            
+            app.logger.info(f"Dados do questionário processados para empresa {company_id}")
+        except json.JSONDecodeError:
+            app.logger.error(f"Erro ao decodificar JSON das respostas para empresa {company_id}")
     
     # Processar dados dos documentos se existirem
     for doc in documents:
